@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+@theme {
+  /* Jika ingin menambah font custom atau warna di sini */
+}
+
+@layer base {
+  body {
+    background-color: #f8fafc; /* Ini sama dengan bg-slate-50 */
+    color: #0f172a;            /* Ini sama dengan text-slate-900 */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-family: 'Inter', sans-serif;
+  }
+}
+
+/* Custom class untuk scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #e2e8f0; /* Ini sama dengan bg-slate-200 */
+  border-radius: 9999px;
+}

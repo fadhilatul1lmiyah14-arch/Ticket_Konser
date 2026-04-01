@@ -1,0 +1,10 @@
+# Abaikan semua node_modules di folder mana pun
+node_modules/
+
+# Abaikan file env di folder mana pun
+.env
+.env.local
+
+# Abaikan folder hasil build
+dist/
+build/
