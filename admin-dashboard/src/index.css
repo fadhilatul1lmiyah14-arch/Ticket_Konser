@@ -1,1 +1,19 @@
 @import "tailwindcss";
+/* CSS untuk Privacy Mode Blur */
+.privacy-blur {
+  transition: filter 0.3s ease;
+}
+
+.privacy-active .privacy-blur {
+  filter: blur(8px);
+  pointer-events: none;
+  user-select: none;
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.animate-spin-slow {
+  animation: spin-slow 8s linear infinite;
+}

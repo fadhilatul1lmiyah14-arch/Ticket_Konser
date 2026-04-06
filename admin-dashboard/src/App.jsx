@@ -1,6 +1,11 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Outlet } from 'react-router-dom';
+import { ConfigProvider } from './context/ConfigContext'; // Pastikan path ini benar
+
+// Import Layouts & Components
+import Sidebar from './components/Sidebar';
+import Navbar from './components/Navbar';
+import Profile from './components/Profile';
 
 // Import Pages
 import Dashboard from './pages/Dashboard';
@@ -11,8 +16,12 @@ import EditConcert from './pages/Concerts/EditConcert';
 import ManageTicket from './pages/Tickets/ManageTicket';
 import ManageMasterData from './pages/MasterData/ManageMasterData';
 import OrderHistory from './pages/Orders/OrderHistory';
+import TicketScanner from './pages/Admin/TicketScanner';
+import Preferences from './pages/Admin/Preferences';
 
-// Helper: Scroll ke atas setiap kali ganti halaman
+// --- HELPER COMPONENTS ---
+
+// 1. Scroll ke atas setiap kali ganti halaman
 const ScrollToTop = () => {
   const { pathname } = useLocation();
   useEffect(() => {
@@ -21,123 +30,120 @@ const ScrollToTop = () => {
   return null;
 };
 
-// Komponen Pelindung (Sesuai Flowchart: Cek Auth Admin)
+/**
+ * 2. Admin Layout: Induk Utama
+ * Perbaikan: Menambahkan struktur container yang solid agar 
+ * background putih di halaman anak (Outlet) tidak "bolong" atau double sidebar.
+ */
+const AdminLayout = () => {
+  return (
+    <div className="flex bg-[#0F0F1E] min-h-screen font-sans text-white overflow-hidden">
+      {/* Sidebar Utama (Hanya ada satu di sini) */}
+      <Sidebar />
+      
+      <div className="flex-1 flex flex-col min-w-0 h-screen">
+        {/* Navbar Utama */}
+        <Navbar />
+
+        {/* Area Konten Utama 
+            bg-white di sini memastikan jika halaman anak punya bg-white, 
+            dia akan memenuhi seluruh layar dengan rapi.
+        */}
+        <main className="flex-1 overflow-y-auto bg-white p-6 md:p-10 text-slate-900">
+          <div className="max-w-7xl mx-auto">
+            <Outlet />
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+};
+
+// 3. Protected Route: Cek Auth
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('adminToken');
-  
-  if (!token) {
-    // Jika tidak ada token, tendang ke login
-    return <Navigate to="/login" replace />;
-  }
-  
+  if (!token) return <Navigate to="/login" replace />;
+  return children ? children : <Outlet />;
+};
+
+// 4. Public Route: Cegah user login masuk ke page login
+const PublicRoute = ({ children }) => {
+  const token = localStorage.getItem('adminToken');
+  if (token) return <Navigate to="/admin/dashboard" replace />;
   return children;
 };
 
-// Komponen Kebalikan: Jika sudah login, dilarang masuk ke halaman Login lagi
-const PublicRoute = ({ children }) => {
-  const token = localStorage.getItem('adminToken');
-  if (token) {
-    return <Navigate to="/dashboard" replace />;
-  }
-  return children;
-};
+// --- MAIN APP ---
 
 function App() {
   return (
-    <Router>
-      <ScrollToTop />
-      <Routes>
-        {/* ==============================
-            AUTH ROUTES 
-           ============================== */}
-        <Route path="/login" element={
-          <PublicRoute>
-            <AdminLogin />
-          </PublicRoute>
-        } />
+    <ConfigProvider>
+      <Router>
+        <ScrollToTop />
+        <Routes>
+          {/* ==============================
+              AUTH ROUTES (Tanpa Sidebar)
+             ============================== */}
+          <Route path="/login" element={
+            <PublicRoute>
+              <AdminLogin />
+            </PublicRoute>
+          } />
 
-        {/* ==============================
-            MAIN DASHBOARD & MANAGEMENT
-           ============================== */}
-        
-        {/* 1. Dashboard Utama (Path Root) */}
-        <Route path="/" element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        } />
+          {/* Redirect Root ke Dashboard */}
+          <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
 
-        {/* PERBAIKAN: Menambahkan path /dashboard agar sinkron dengan navigate('/dashboard') */}
-        <Route path="/dashboard" element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        } />
-        
-        {/* 2. Manajemen Konser (Events) */}
-        <Route path="/concerts" element={
-          <ProtectedRoute>
-            <ManageConcert />
-          </ProtectedRoute>
-        } />
-        
-        <Route path="/add-concert" element={
-          <ProtectedRoute>
-            <AddConcert />
-          </ProtectedRoute>
-        } />
-        
-        <Route path="/edit-concert/:id" element={
-          <ProtectedRoute>
-            <EditConcert />
-          </ProtectedRoute>
-        } />
-        
-        {/* 3. Manajemen Tiket & Stok */}
-        <Route path="/tickets" element={
-          <ProtectedRoute>
-            <ManageTicket />
-          </ProtectedRoute>
-        } />
-        
-        {/* 4. Monitoring Pesanan Pembeli (Order History) */}
-        <Route path="/orders" element={
-          <ProtectedRoute>
-            <OrderHistory />
-          </ProtectedRoute>
-        } />
-        
-        {/* 5. Master Data (Category & Location) */}
-        <Route path="/master-data" element={
-          <ProtectedRoute>
-            <ManageMasterData />
-          </ProtectedRoute>
-        } />
+          {/* ==============================
+              ADMIN ROUTES (Pake Sidebar & Navbar)
+             ============================== */}
+          <Route 
+            path="/admin" 
+            element={
+              <ProtectedRoute>
+                <AdminLayout />
+              </ProtectedRoute>
+            }
+          >
+            {/* PENTING: Pastikan di dalam file Dashboard.jsx, ManageConcert.jsx, dll 
+                SUDAH TIDAK ADA lagi pemanggilan <Sidebar /> atau <Navbar />.
+            */}
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="manage-concert" element={<ManageConcert />} />
+            <Route path="add-concert" element={<AddConcert />} />
+            <Route path="edit-concert/:id" element={<EditConcert />} />
+            <Route path="tickets" element={<ManageTicket />} />
+            <Route path="orders" element={<OrderHistory />} />
+            <Route path="master-data" element={<ManageMasterData />} />
+            <Route path="scanner" element={<TicketScanner />} />
+            <Route path="preferences" element={<Preferences />} />
+            <Route path="profile" element={<Profile />} />
+          </Route>
 
-        {/* ==============================
-            ERROR HANDLING (404)
-           ============================== */}
-        <Route path="*" element={
-          <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 font-sans p-6 text-center">
-            <div className="relative">
-                <h1 className="text-[150px] font-black text-slate-200 italic leading-none select-none">404</h1>
-                <p className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full text-slate-800 font-black uppercase tracking-[0.3em] text-lg italic">
-                    Lost in Space?
-                </p>
+          {/* ==============================
+              ERROR HANDLING (404)
+             ============================== */}
+          <Route path="*" element={
+            <div className="flex flex-col items-center justify-center min-h-screen bg-[#0F0F1E] font-sans p-6 text-center text-white">
+              <div className="relative">
+                  <h1 className="text-[120px] md:text-[180px] font-black text-white/5 italic leading-none select-none">404</h1>
+                  <p className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full text-white font-black uppercase tracking-[0.3em] text-lg italic">
+                      Lost in Space?
+                  </p>
+              </div>
+              <p className="text-white/40 font-bold uppercase tracking-widest text-[10px] mt-4 max-w-xs mx-auto">
+                  The page you are looking for doesn't exist or has been moved to another dimension.
+              </p>
+              <button 
+                onClick={() => window.location.href = '/admin/dashboard'} 
+                className="mt-12 px-10 py-5 bg-[#E297C1] text-white rounded-[24px] text-[10px] font-black uppercase tracking-[0.3em] hover:bg-white hover:text-[#E297C1] transition-all shadow-2xl active:scale-95"
+              >
+                Back to Command Center
+              </button>
             </div>
-            <p className="text-slate-400 font-bold uppercase tracking-widest text-xs mt-4">
-                Halaman yang kamu cari tidak ditemukan atau telah dipindahkan.
-            </p>
-            <button 
-              onClick={() => window.location.href = '/dashboard'} 
-              className="mt-12 px-10 py-5 bg-slate-900 text-white rounded-[24px] text-[10px] font-black uppercase tracking-[0.3em] hover:bg-[#E297C1] transition-all shadow-[0_20px_40px_rgba(0,0,0,0.1)] active:scale-95 flex items-center gap-3"
-            >
-              Take Me Home
-            </button>
-          </div>
-        } />
-      </Routes>
-    </Router>
+          } />
+        </Routes>
+      </Router>
+    </ConfigProvider>
   );
 }
 

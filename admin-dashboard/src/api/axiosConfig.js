@@ -1,8 +1,12 @@
 import axios from 'axios';
 
 const api = axios.create({
-  // Sesuaikan dengan IP backend temanmu yang sedang running
-  baseURL: 'http://192.168.0.242:3000', 
+  /**
+   * baseURL sekarang menggunakan URL publik dari Tunnelmole.
+   * Ini memungkinkan Frontend kamu (meskipun dijalankan di laptop lain atau HP) 
+   * untuk tetap bisa menghubungi Backend di laptopmu.
+   */
+  baseURL: 'https://didjvn-ip-182-8-195-136.tunnelmole.net', 
   headers: {
     'Content-Type': 'application/json',
   },
@@ -10,17 +14,16 @@ const api = axios.create({
 
 /**
  * INTERCEPTOR REQUEST
- * Fungsinya: Setiap kali aplikasi memanggil API, 
- * kode ini akan otomatis mengambil token dari localStorage 
- * dan memasukkannya ke Header Authorization.
+ * Fungsinya: Mengambil token admin dari localStorage dan mengirimkannya 
+ * di setiap request agar server tahu bahwa ini adalah Admin yang sah.
  */
 api.interceptors.request.use(
   (config) => {
-    // Ambil token yang kita simpan saat login tadi
+    // Ambil token admin (sesuaikan key-nya, misal 'adminToken')
     const token = localStorage.getItem('adminToken');
     
     if (token) {
-      // Tempelkan token ke Header dengan format Bearer
+      // Masukkan token ke Header Authorization
       config.headers.Authorization = `Bearer ${token}`;
     }
     
@@ -32,18 +35,24 @@ api.interceptors.request.use(
 );
 
 /**
- * INTERCEPTOR RESPONSE (Opsional tapi Penting)
- * Fungsinya: Jika tiba-tiba token expired atau tidak valid (401),
- * aplikasi akan otomatis logout dan balik ke halaman login.
+ * INTERCEPTOR RESPONSE
+ * Fungsinya: Menangani jika token habis (expired) atau server error.
  */
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Jika server merespons 401 (Unauthorized), paksa logout
     if (error.response && error.response.status === 401) {
-      console.error("Token tidak valid atau expired. Mengalihkan ke login...");
-      localStorage.clear(); // Hapus semua data login yang lama
+      console.error("Sesi berakhir. Silakan login kembali.");
+      localStorage.removeItem('adminToken'); // Hapus token saja
       window.location.href = '/login'; 
     }
+    
+    // Opsional: Menangani error jaringan
+    if (!error.response) {
+      console.error("Koneksi ke API gagal. Pastikan Tunnelmole & Backend menyala!");
+    }
+
     return Promise.reject(error);
   }
 );

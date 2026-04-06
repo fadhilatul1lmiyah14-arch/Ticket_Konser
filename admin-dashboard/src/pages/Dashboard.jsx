@@ -1,268 +1,206 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../api/axiosConfig'; 
+import { adminService } from '../api/adminService'; 
+import { useConfig } from '../context/ConfigContext'; // Import Hook Config
 import { 
   Edit, 
-  Trash2, 
   Plus, 
-  Users, 
   Music, 
   Ticket, 
-  ArrowUpRight,
   TrendingUp,
-  Loader2,
-  LogOut
+  DollarSign,
+  Calendar,
+  Loader2
 } from 'lucide-react';
-import Sidebar from '../components/Sidebar'; 
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { settings } = useConfig(); // Ambil settings untuk Privacy Mode
   
-  const [concerts, setConcerts] = useState([]);
-  const [stats, setStats] = useState({
-    totalConcert: 0,
-    totalTickets: 0,
-    totalUsers: 0
+  const [period, setPeriod] = useState('all'); // State untuk filter waktu
+  const [eventsPerformance, setEventsPerformance] = useState([]);
+  const [summary, setSummary] = useState({
+    totalRevenue: 0,
+    totalTicketsSold: 0,
+    totalEvents: 0 
   });
   const [loading, setLoading] = useState(true);
 
-  const handleLogout = () => {
-    localStorage.clear();
-    navigate('/login');
-  };
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    try {
+      const response = await adminService.getStats(period);
+      const data = response.data;
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      const token = localStorage.getItem('adminToken');
-      
-      if (!token) {
-        navigate('/login');
-        return;
-      }
-
-      try {
-        // Panggil endpoint statistik dashboard
-        const response = await api.get('/admin/dashboard/stats');
-
-        // MAPPING DATA: Kita buat fleksibel agar bisa baca snake_case (DB) atau camelCase (Elysia)
-        const data = response.data.data || response.data;
-        
-        setConcerts(data.concerts || []);
-        setStats({
-          totalConcert: data.total_concert ?? data.totalConcerts ?? 0,
-          totalTickets: data.total_tickets ?? data.totalTickets ?? 0,
-          totalUsers: data.total_users ?? data.totalUsers ?? 0
+      if (data.status === "success") {
+        setEventsPerformance(data.events_performance || []);
+        setSummary({
+          totalRevenue: Number(data.summary?.total_revenue) || 0,
+          totalTicketsSold: Number(data.summary?.total_tickets_sold) || 0,
+          totalEvents: data.events_performance?.length || 0
         });
-      } catch (error) {
-        console.error("Gagal mengambil data dashboard:", error);
-        if (error.response?.status === 401) {
-          handleLogout();
-        }
-      } finally {
-        setLoading(false);
       }
-    };
-
-    fetchDashboardData();
-  }, [navigate]);
-
-  // Fungsi Hapus Event (Opsional jika ingin diaktifkan di dashboard)
-  const handleDeleteEvent = async (id) => {
-    if (window.confirm("Hapus event ini beserta seluruh datanya?")) {
-      try {
-        await api.delete(`/admin/events/${id}`);
-        setConcerts(concerts.filter(c => c.id !== id));
-      } catch (error) {
-        alert("Gagal menghapus event.");
-      }
+    } catch (error) {
+      console.error("Gagal mengambil data dashboard:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="animate-spin text-[#E297C1]" size={48} />
-          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 text-center">
-            Syncing Data...<br/>Please Wait
-          </p>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    fetchDashboardData();
+  }, [period]);
 
   return (
-    <div className="flex bg-slate-50 min-h-screen font-sans">
-      <Sidebar />
-      
-      <main className="flex-1 p-10 overflow-y-auto">
+    <div className="bg-white min-h-screen p-4 sm:p-6 lg:p-0">
+      {/* Header */}
+      <header className="mb-8 md:mb-10 flex flex-col xl:flex-row justify-between items-start xl:items-end gap-6">
+        <div className="w-full sm:w-auto">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="w-2 h-2 bg-[#E297C1] rounded-full animate-pulse"></span>
+            <h2 className="text-[9px] md:text-[10px] font-black text-[#E297C1] uppercase tracking-[0.3em] md:tracking-[0.5em]">Live Analytical Overview</h2>
+          </div>
+          <h1 className="text-3xl md:text-4xl font-black text-slate-900 uppercase italic tracking-tighter leading-none">
+            Admin <span className="text-slate-200">Analytics</span>
+          </h1>
+        </div>
         
-        {/* Header Section */}
-        <header className="mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
-          <div>
-            <div className="flex items-center gap-3 mb-1">
-              <span className="w-2 h-2 bg-green-500 rounded-full animate-ping"></span>
-              <h2 className="text-xs font-black text-[#E297C1] uppercase tracking-[0.4em]">Live System Overview</h2>
-            </div>
-            <h1 className="text-4xl font-black text-slate-800 uppercase italic leading-none">Admin Dashboard</h1>
-          </div>
-          
-          <div className="flex gap-4">
-            <button 
-              onClick={() => navigate('/add-concert')}
-              className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center gap-3 hover:bg-[#E297C1] transition-all shadow-2xl active:scale-95"
-            >
-              <Plus size={20} /> New Event
-            </button>
-            <button 
-              onClick={handleLogout}
-              className="p-4 bg-white border border-slate-100 text-rose-500 rounded-2xl hover:bg-rose-50 transition-all shadow-sm"
-              title="Logout"
-            >
-              <LogOut size={20} />
-            </button>
-          </div>
-        </header>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-          {/* Total Concert */}
-          <div className="bg-[#E297C1] p-8 rounded-[32px] shadow-xl text-white relative overflow-hidden group transition-all hover:-translate-y-2">
-            <div className="relative z-10">
-              <div className="bg-white/20 w-12 h-12 rounded-2xl flex items-center justify-center mb-6">
-                <Music size={24} />
-              </div>
-              <p className="font-bold uppercase tracking-widest text-[10px] mb-1 opacity-80">Total Concert</p>
-              <h3 className="text-5xl font-black italic">{stats.totalConcert}</h3>
-            </div>
-            <TrendingUp className="absolute right-6 top-6 text-white/10" size={80} />
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full xl:w-auto">
+          <div className="flex bg-slate-100 p-1.5 rounded-[18px] md:rounded-[20px] gap-1 w-full sm:w-auto overflow-x-auto no-scrollbar">
+            {['all', 'today', 'week', 'month'].map((p) => (
+              <button
+                key={p}
+                onClick={() => setPeriod(p)}
+                className={`flex-1 sm:flex-none px-3 md:px-4 py-2 rounded-[12px] md:rounded-[15px] text-[8px] md:text-[9px] font-black uppercase tracking-wider transition-all whitespace-nowrap ${
+                  period === p 
+                    ? 'bg-white text-[#E297C1] shadow-sm' 
+                    : 'text-slate-400 hover:text-slate-600'
+                }`}
+              >
+                {p}
+              </button>
+            ))}
           </div>
 
-          {/* Tickets Sold */}
-          <div className="bg-slate-900 p-8 rounded-[32px] shadow-xl text-white relative overflow-hidden group transition-all hover:-translate-y-2">
-            <div className="relative z-10">
-              <div className="bg-white/20 w-12 h-12 rounded-2xl flex items-center justify-center mb-6">
-                <Ticket size={24} />
-              </div>
-              <p className="font-bold uppercase tracking-widest text-[10px] mb-1 opacity-80">Tickets Sold</p>
-              <h3 className="text-5xl font-black italic">{stats.totalTickets}</h3>
-            </div>
-            <TrendingUp className="absolute right-6 top-6 text-white/10" size={80} />
-          </div>
+          <button 
+            onClick={() => navigate('/admin/add-concert')}
+            className="w-full sm:w-auto bg-[#E297C1] text-white px-6 md:px-8 py-3 md:py-4 rounded-[18px] md:rounded-[20px] font-black uppercase tracking-widest text-[9px] md:text-[10px] flex items-center justify-center gap-3 hover:bg-slate-900 transition-all shadow-[0_15px_30px_rgba(226,151,193,0.2)] active:scale-95"
+          >
+            <Plus size={16} className="md:w-[18px]" /> New Event
+          </button>
+        </div>
+      </header>
 
-          {/* Total Users */}
-          <div className="bg-[#E297C1] p-8 rounded-[32px] shadow-xl text-white relative overflow-hidden group transition-all hover:-translate-y-2">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8 md:mb-12">
+        {/* Card 1: Total Revenue */}
+        <div className="bg-[#E297C1] p-6 md:p-8 rounded-[30px] md:rounded-[40px] relative overflow-hidden group shadow-xl shadow-pink-100 min-h-[160px] md:min-h-[180px] flex flex-col justify-center">
             <div className="relative z-10">
-              <div className="bg-white/20 w-12 h-12 rounded-2xl flex items-center justify-center mb-6">
-                <Users size={24} />
-              </div>
-              <p className="font-bold uppercase tracking-widest text-[10px] mb-1 opacity-80">Total Users</p>
-              <h3 className="text-5xl font-black italic">{stats.totalUsers}</h3>
+               <p className="text-[9px] md:text-[10px] font-black text-white/70 uppercase tracking-widest mb-3 md:mb-4">Total Revenue</p>
+               <h2 className={`text-2xl md:text-3xl font-black text-white italic transition-all group-hover:scale-105 origin-left ${settings.privacyMode ? 'privacy-blur' : ''}`}>
+                 {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(summary.totalRevenue)}
+               </h2>
             </div>
-            <Users className="absolute right-6 top-6 text-white/10" size={80} />
-          </div>
+            <DollarSign className="absolute -right-4 -bottom-4 text-white/20 w-24 h-24 md:w-32 md:h-32 transform -rotate-12 group-hover:rotate-0 transition-transform duration-700" />
         </div>
 
-        {/* Concert List Table */}
-        <div className="bg-white rounded-[40px] shadow-2xl overflow-hidden border border-slate-100">
-          <div className="p-8 border-b border-slate-50 flex justify-between items-center bg-slate-50/30">
-            <h3 className="font-black text-slate-800 uppercase italic tracking-tight">Recent Event Service Monitor</h3>
-            <button 
-              onClick={() => navigate('/concerts')}
-              className="text-[10px] font-black uppercase text-[#E297C1] hover:text-slate-900 transition flex items-center gap-1"
-            >
-              View All <ArrowUpRight size={14} />
-            </button>
+        {/* Card 2: Total Tickets Sold */}
+        <div className="bg-white p-6 md:p-8 rounded-[30px] md:rounded-[40px] border border-slate-100 relative overflow-hidden group shadow-xl shadow-slate-100 min-h-[160px] md:min-h-[180px] flex flex-col justify-center">
+            <div className="relative z-10">
+               <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 md:mb-4">Tickets Sold</p>
+               <h2 className="text-5xl md:text-6xl font-black text-slate-900 italic transition-all group-hover:scale-105 origin-left">
+                 {summary.totalTicketsSold}
+               </h2>
+            </div>
+            <Ticket className="absolute -right-4 -bottom-4 text-slate-50 w-24 h-24 md:w-32 md:h-32 transform rotate-12 group-hover:rotate-0 transition-transform duration-700" />
+            <TrendingUp className="absolute top-6 md:top-8 right-6 md:right-8 text-[#E297C1]/30 animate-bounce" size={28} />
+        </div>
+
+        {/* Card 3: Total Events */}
+        <div className="bg-slate-900 p-6 md:p-8 rounded-[30px] md:rounded-[40px] relative overflow-hidden group shadow-xl shadow-slate-200 min-h-[160px] md:min-h-[180px] flex flex-col justify-center sm:col-span-2 lg:col-span-1">
+            <div className="relative z-10">
+               <p className="text-[9px] md:text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 md:mb-4">Active Events</p>
+               <h2 className="text-5xl md:text-6xl font-black text-white italic transition-all group-hover:scale-105 origin-left">
+                 {summary.totalEvents}
+               </h2>
+            </div>
+            <Music className="absolute -right-4 -bottom-4 text-white/5 w-24 h-24 md:w-32 md:h-32 transform -rotate-12 group-hover:rotate-0 transition-transform duration-700" />
+        </div>
+      </div>
+
+      {/* Table Section */}
+      <div className="bg-white rounded-[30px] md:rounded-[40px] overflow-hidden border border-slate-100 shadow-2xl shadow-slate-200/50 relative">
+        {loading && (
+          <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-20 flex items-center justify-center">
+            <Loader2 size={32} className="text-[#E297C1] animate-spin" />
           </div>
-          
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead className="bg-slate-900 text-white text-[10px] uppercase tracking-[0.2em]">
-                <tr>
-                  <th className="px-8 py-6">Event Title</th>
-                  <th className="px-8 py-6">Date</th>
-                  <th className="px-8 py-6">Quota (Rem/Total)</th>
-                  <th className="px-8 py-6">Status</th>
-                  <th className="px-8 py-6 text-center">Action</th>
+        )}
+
+        <div className="p-6 md:p-8 border-b border-slate-50 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <h3 className="text-[10px] md:text-xs font-black text-slate-900 uppercase italic tracking-widest">Events Performance Monitor</h3>
+          <div className="flex items-center gap-2 text-slate-400">
+            <Calendar size={14} />
+            <span className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest">Live Updates</span>
+          </div>
+        </div>
+        
+        <div className="overflow-x-auto no-scrollbar">
+          <table className="w-full text-left border-collapse min-w-[600px]">
+            <thead className="bg-slate-900 text-white/50 text-[8px] md:text-[9px] uppercase tracking-[0.3em]">
+              <tr>
+                <th className="px-6 md:px-8 py-5 md:py-6 font-black">Event Name</th>
+                <th className="px-6 md:px-8 py-5 md:py-6 font-black">Sold</th>
+                <th className="px-6 md:px-8 py-5 md:py-6 font-black">Earnings</th>
+                <th className="px-6 md:px-8 py-5 md:py-6 text-center font-black">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {eventsPerformance.length > 0 ? eventsPerformance.map((item) => (
+                <tr key={item.event_id} className="hover:bg-slate-50 transition-all group">
+                  <td className="px-6 md:px-8 py-5 md:py-6">
+                    <div className="flex flex-col">
+                      <span className="font-bold text-xs md:text-sm text-slate-800 group-hover:text-[#E297C1] transition duration-300 line-clamp-1">
+                        {item.event_name}
+                      </span>
+                      <span className="text-[8px] md:text-[9px] text-slate-300 font-black uppercase tracking-tighter">ID: {item.event_id}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 md:px-8 py-5 md:py-6">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></div>
+                      <span className="text-slate-500 font-bold text-xs md:text-sm whitespace-nowrap">{item.total_sold} Tickets</span>
+                    </div>
+                  </td>
+                  <td className="px-6 md:px-8 py-5 md:py-6">
+                    <span className={`text-[#E297C1] font-black text-xs md:text-sm whitespace-nowrap ${settings.privacyMode ? 'privacy-blur' : ''}`}>
+                      {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(item.total_earnings)}
+                    </span>
+                  </td>
+                  <td className="px-6 md:px-8 py-5 md:py-6">
+                    <div className="flex justify-center">
+                      <button 
+                        onClick={() => navigate(`/admin/edit-concert/${item.event_id}`)}
+                        className="p-2.5 md:p-3 bg-slate-100 text-slate-400 rounded-[12px] md:rounded-[15px] hover:bg-[#E297C1] hover:text-white transition-all active:scale-90 shadow-sm"
+                      >
+                        <Edit size={14} />
+                      </button>
+                    </div>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {concerts.length > 0 ? concerts.map((item) => {
-                  const remaining = item.remaining_quota ?? item.remainingQuota ?? 0;
-                  const total = item.total_quota ?? item.totalQuota ?? 1;
-                  const percentage = (remaining / total) * 100;
-
-                  return (
-                    <tr key={item.id} className="hover:bg-slate-50/80 transition-all group">
-                      <td className="px-8 py-5">
-                        <span className="font-black text-slate-700 uppercase italic group-hover:text-[#E297C1] transition">
-                          {item.title}
-                        </span>
-                      </td>
-                      <td className="px-8 py-5 text-slate-500 font-bold text-sm">
-                        {item.event_date ? new Date(item.event_date).toLocaleDateString('id-ID', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric'
-                        }) : 'No Date'}
-                      </td>
-                      <td className="px-8 py-5">
-                         <div className="flex flex-col gap-1">
-                            <span className="text-xs font-black text-slate-700">
-                              {remaining} / {total}
-                            </span>
-                            <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                               <div 
-                                  className="bg-[#E297C1] h-full transition-all duration-700" 
-                                  style={{ width: `${percentage}%` }}
-                               ></div>
-                            </div>
-                         </div>
-                      </td>
-                      <td className="px-8 py-5">
-                        <span className={`text-[9px] font-black uppercase px-3 py-1 rounded-full border ${
-                          item.status?.toLowerCase() === 'published' 
-                            ? 'text-green-500 border-green-200 bg-green-50' 
-                            : 'text-amber-500 border-amber-200 bg-amber-50'
-                        }`}>
-                          {item.status || 'Draft'}
-                        </span>
-                      </td>
-                      <td className="px-8 py-5 text-center">
-                        <div className="flex justify-center gap-3">
-                          <button 
-                            onClick={() => navigate(`/edit-concert/${item.id}`)}
-                            className="p-3 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition shadow-sm"
-                            title="Edit Event"
-                          >
-                            <Edit size={16} />
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteEvent(item.id)}
-                            className="p-3 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition shadow-sm"
-                            title="Delete Event"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                }) : (
-                  <tr>
-                    <td colSpan="5" className="px-8 py-16 text-center">
-                      <div className="flex flex-col items-center gap-2 opacity-30">
-                        <Music size={40} />
-                        <p className="font-black uppercase text-xs tracking-widest">No Active Events</p>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+              )) : (
+                <tr>
+                  <td colSpan="4" className="px-8 py-20 md:py-24 text-center">
+                    <div className="flex flex-col items-center gap-4 opacity-20">
+                      <Music size={40} md:size={48} />
+                      <p className="uppercase text-[9px] md:text-[10px] font-black tracking-[0.3em]">No performance data available</p>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
-      </main>
+      </div>
     </div>
   );
 };

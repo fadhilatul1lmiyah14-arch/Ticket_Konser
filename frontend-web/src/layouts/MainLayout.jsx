@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ShoppingCart, Instagram, Twitter, Facebook, Mail, User, LogOut, Search, X } from 'lucide-react';
+import { ShoppingCart, Instagram, Twitter, Facebook, Mail, User, LogOut, Search, X, Menu } from 'lucide-react';
 import logo from '../assets/logo.png'; 
 
 const MainLayout = ({ children }) => {
@@ -10,151 +10,255 @@ const MainLayout = ({ children }) => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userData, setUserData] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [navSearch, setNavSearch] = useState("");
+  const [hasCartItems, setHasCartItems] = useState(false);
 
-  useEffect(() => {
-    const token = localStorage.getItem('userToken');
-    const storedUser = localStorage.getItem('userData');
+  // --- LOGIKA SINKRONISASI USER DATA ---
+  const syncUserData = useCallback(() => {
+    const token = localStorage.getItem('userToken') || localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user'); 
     
     if (token && storedUser) {
       setIsLoggedIn(true);
-      setUserData(JSON.parse(storedUser));
+      try {
+        const parsed = JSON.parse(storedUser);
+        if (parsed && !parsed.avatar && parsed.avatar_seed) {
+            parsed.avatar = `https://api.dicebear.com/9.x/toon-head/svg?seed=${parsed.avatar_seed}`;
+        }
+        setUserData(parsed);
+      } catch (e) {
+        setUserData(null);
+      }
     } else {
       setIsLoggedIn(false);
       setUserData(null);
     }
-  }, [location]);
+  }, []);
+
+  // --- LOGIKA UPDATE STATUS CART ---
+  const updateCartStatus = useCallback(() => {
+    // Sesuaikan dengan key 'cart' yang digunakan di halaman Cart.jsx
+    const cartData = localStorage.getItem('cart');
+    if (cartData) {
+      try {
+        const parsed = JSON.parse(cartData);
+        // Jika parsed adalah array dan memiliki isi, atau object valid
+        setHasCartItems(Array.isArray(parsed) ? parsed.length > 0 : !!parsed); 
+      } catch (e) {
+        setHasCartItems(false);
+      }
+    } else {
+      setHasCartItems(false);
+    }
+  }, []);
+
+  const getAvatarUrl = (seed) => 
+    `https://api.dicebear.com/9.x/toon-head/svg?seed=${seed || 'Felix'}`;
+
+  useEffect(() => {
+    syncUserData();
+    updateCartStatus();
+    setIsMobileMenuOpen(false); 
+
+    // Listeners untuk update reaktif
+    window.addEventListener('cartUpdated', updateCartStatus);
+    window.addEventListener('storage', () => {
+        syncUserData();
+        updateCartStatus();
+    });
+    window.addEventListener('profileUpdated', syncUserData);
+
+    return () => {
+      window.removeEventListener('cartUpdated', updateCartStatus);
+      window.removeEventListener('storage', () => {
+        syncUserData();
+        updateCartStatus();
+      });
+      window.removeEventListener('profileUpdated', syncUserData);
+    };
+  }, [location.pathname, syncUserData, updateCartStatus]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const searchQuery = params.get('search');
+    
+    if (searchQuery) {
+      setNavSearch(searchQuery);
+    } else {
+      if (location.pathname !== '/events') {
+        setNavSearch("");
+      }
+    }
+  }, [location.search, location.pathname]);
 
   const handleLogout = () => {
     localStorage.removeItem('userToken');
-    localStorage.removeItem('userData');
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('userId');
     setIsLoggedIn(false);
     setUserData(null);
     setShowDropdown(false);
+    updateCartStatus();
     navigate('/login');
   };
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    if (navSearch.trim()) {
-      navigate(`/events?search=${navSearch}`);
+    const term = navSearch.trim();
+    if (term) {
+      navigate(`/events?search=${encodeURIComponent(term)}`);
+    } else {
+      navigate('/events'); 
+    }
+    setIsMobileMenuOpen(false);
+  };
+
+  const clearSearch = () => {
+    setNavSearch("");
+    if (location.pathname === '/events') {
+      navigate('/events');
     }
   };
 
   return (
-    <div className="bg-[#0f172a] min-h-screen font-sans text-white flex flex-col">
-      {/* --- NAVBAR MODERN --- */}
-      <nav className="bg-[#0f172a]/90 backdrop-blur-md border-b border-slate-800 px-8 py-5 flex justify-between items-center sticky top-0 z-50">
+    <div className="bg-[#0f172a] min-h-screen font-sans text-white flex flex-col text-left overflow-x-hidden">
+      <nav className="bg-[#0f172a]/95 backdrop-blur-md border-b border-slate-800 px-4 md:px-8 py-4 flex justify-between items-center fixed top-0 left-0 right-0 z-50 h-[73px]">
         
-        {/* LOGO & BRAND (DIPERBESAR) */}
-        <Link to="/" className="flex items-center gap-3 group min-w-fit">
+        {/* LEFT: LOGO */}
+        <Link to="/" className="flex items-center gap-2 md:gap-3 group min-w-fit">
           <div className="group-hover:scale-110 transition-transform duration-300">
-            {/* Ukuran logo diperbesar ke h-10 */}
-            <img src={logo} alt="Raly Ticket Logo" className="h-10 w-auto object-contain" />
+            <img src={logo} alt="Raly Ticket Logo" className="h-8 md:h-10 w-auto object-contain" />
           </div>
-          {/* Ukuran teks diperbesar ke text-2xl */}
-          <h1 className="text-2xl font-black tracking-tighter uppercase italic text-white">
+          <h1 className="text-lg md:text-2xl font-black tracking-tighter uppercase italic text-white leading-none">
             Raly Ticket
           </h1>
         </Link>
 
-        {/* SEARCH BAR */}
+        {/* CENTER: SEARCH */}
         <div className="hidden lg:flex flex-1 justify-center max-w-md mx-8">
           <form onSubmit={handleSearchSubmit} className="relative w-full group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-purple-500 transition-colors" size={20} />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-purple-500 transition-colors" size={18} />
             <input 
               type="text" 
-              placeholder="Search Here..." 
+              placeholder="Search Events..." 
               value={navSearch}
               onChange={(e) => setNavSearch(e.target.value)}
-              className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2.5 pl-12 pr-10 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none font-bold text-white transition-all"
+              className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2 pl-11 pr-10 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none font-bold text-white transition-all"
             />
             {navSearch && (
-              <button 
-                type="button" 
-                onClick={() => setNavSearch("")}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
-              >
-                <X size={18} />
+              <button type="button" onClick={clearSearch} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white">
+                <X size={16} />
               </button>
             )}
           </form>
         </div>
 
-        {/* MENU NAVIGASI */}
-        <div className="flex items-center gap-8 text-sm font-bold uppercase tracking-widest">
-          <div className="hidden md:flex items-center gap-8">
+        {/* RIGHT: ACTIONS */}
+        <div className="flex items-center gap-3 md:gap-6">
+          <div className="hidden md:flex items-center gap-6 text-[11px] font-black uppercase tracking-[0.2em]">
             <Link to="/" className={`transition ${location.pathname === '/' ? 'text-purple-400' : 'text-white hover:text-purple-400'}`}>Home</Link>
             <Link to="/events" className={`transition ${location.pathname === '/events' ? 'text-purple-400' : 'text-white hover:text-purple-400'}`}>Events</Link>
           </div>
           
-          <Link to="/cart" className="relative text-white group">
-            <ShoppingCart size={24} className="cursor-pointer group-hover:text-purple-400 transition" />
-            <span className="absolute -top-2 -right-2 bg-purple-600 text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-black border-2 border-[#0f172a]">0</span>
+          {/* CART WITH BADGE */}
+          <Link to="/cart" className="relative text-white group p-2">
+            <ShoppingCart size={22} className="cursor-pointer group-hover:text-purple-400 transition" />
+            {hasCartItems && (
+              <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-purple-600 border border-[#0f172a]"></span>
+              </span>
+            )}
           </Link>
 
-          {/* KONDISI LOGIN/REGISTER */}
           {isLoggedIn ? (
             <div className="relative">
-              <button 
-                onClick={() => setShowDropdown(!showDropdown)}
-                className="flex items-center gap-2 bg-slate-800 p-1.5 pr-4 rounded-full hover:bg-slate-700 transition border border-slate-700 shadow-lg"
-              >
-                <div className="bg-purple-600 p-2 rounded-full shadow-lg shadow-purple-500/20">
-                  <User size={18} className="text-white" />
+              <button onClick={() => setShowDropdown(!showDropdown)} className="flex items-center gap-2 bg-slate-800/50 p-1 md:pr-4 rounded-full hover:bg-slate-800 transition border border-slate-700 group">
+                <div className="bg-slate-900 w-8 h-8 md:w-9 md:h-9 rounded-full overflow-hidden border border-purple-500/30">
+                  <img 
+                    key={userData?.avatar_seed || 'default'}
+                    src={userData?.avatar || getAvatarUrl(userData?.avatar_seed)} 
+                    alt="Avatar" 
+                    className="w-full h-full object-cover" 
+                    onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${userData?.name}&background=6366f1&color=fff`; }}
+                  />
                 </div>
-                <span className="text-[11px] font-black text-white uppercase tracking-tighter max-w-[120px] truncate">
-                  {userData?.name || 'My Account'}
-                </span>
+                <div className="hidden md:flex flex-col items-start leading-none text-left">
+                  <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Account</span>
+                  <span className="text-[10px] font-black text-white uppercase tracking-tighter max-w-[80px] truncate">
+                    {userData?.name}
+                  </span>
+                </div>
               </button>
 
               {showDropdown && (
-                <div className="absolute right-0 mt-3 w-52 bg-white rounded-2xl shadow-2xl py-2 border border-slate-100 animate-in fade-in slide-in-from-top-2 duration-300">
-                  <div className="px-4 py-3 border-b border-slate-50 mb-1">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Signed in as</p>
-                    <p className="text-xs font-bold text-purple-600 truncate">{userData?.email}</p>
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setShowDropdown(false)}></div>
+                  <div className="absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-2xl py-2 border border-slate-100 animate-in fade-in slide-in-from-top-2 duration-300 z-20 overflow-hidden">
+                    <div className="px-5 py-4 border-b border-slate-50 bg-slate-50/50 mb-1">
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Authenticated As</p>
+                      <p className="text-xs font-black text-slate-900 truncate">{userData?.name}</p>
+                    </div>
+                    <Link to="/dashboard/overview" onClick={() => setShowDropdown(false)} className="flex items-center gap-3 px-5 py-3.5 text-slate-700 hover:bg-purple-50 hover:text-purple-600 transition font-black text-[10px] uppercase tracking-widest">
+                      <User size={16} /> User Dashboard
+                    </Link>
+                    <button onClick={handleLogout} className="w-full flex items-center gap-3 px-5 py-3.5 text-red-500 hover:bg-red-50 transition font-black text-[10px] uppercase tracking-widest border-t border-slate-100">
+                      <LogOut size={16} /> Logout Account
+                    </button>
                   </div>
-
-                  <Link 
-                    to="/dashboard" 
-                    onClick={() => setShowDropdown(false)}
-                    className="flex items-center gap-3 px-4 py-3 text-slate-700 hover:bg-purple-50 hover:text-purple-600 transition font-bold text-xs uppercase tracking-widest"
-                  >
-                    <User size={16} /> User Dashboard
-                  </Link>
-                  
-                  <button 
-                    onClick={handleLogout}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50 transition font-bold text-xs uppercase tracking-widest border-t border-slate-100"
-                  >
-                    <LogOut size={16} /> Logout
-                  </button>
-                </div>
+                </>
               )}
             </div>
           ) : (
-            <Link to="/login" className="bg-gradient-to-r from-purple-600 to-indigo-600 px-7 py-3 rounded-xl hover:scale-105 active:scale-95 transition-all shadow-lg shadow-purple-500/20 text-white font-black uppercase text-xs tracking-widest">
+            <Link to="/login" className="hidden md:block bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-2.5 rounded-xl text-white font-black uppercase text-[10px] tracking-widest shadow-lg shadow-purple-500/20">
               Sign in
             </Link>
           )}
+
+          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="md:hidden p-2 text-white">
+            {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
         </div>
       </nav>
 
-      {/* --- CONTENT AREA --- */}
-      <main className="flex-1">
+      {/* --- MOBILE OVERLAY --- */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 top-[73px] bg-[#0f172a] z-[49] animate-in slide-in-from-right duration-300 md:hidden flex flex-col p-6 gap-8">
+          <form onSubmit={handleSearchSubmit} className="relative group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+            <input 
+              type="text" 
+              placeholder="Search Events..." 
+              value={navSearch}
+              onChange={(e) => setNavSearch(e.target.value)}
+              className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-12 pr-4 text-sm font-bold outline-none text-white"
+            />
+          </form>
+
+          <div className="flex flex-col gap-6 text-xl font-black uppercase tracking-[0.1em]">
+            <Link to="/" className={`${location.pathname === '/' ? 'text-purple-400' : 'text-white'}`}>Home</Link>
+            <Link to="/events" className={`${location.pathname === '/events' ? 'text-purple-400' : 'text-white'}`}>Events</Link>
+            {!isLoggedIn && (
+               <Link to="/login" className="text-purple-500 pt-4 border-t border-slate-800">Sign in</Link>
+            )}
+          </div>
+        </div>
+      )}
+
+      <main className="flex-1 pt-[73px]">
         {children}
       </main>
 
-      {/* --- FOOTER MODERN --- */}
+      {/* --- FOOTER --- */}
       <footer className="w-full bg-white border-t border-slate-200 pt-16 pb-8 mt-20 font-sans text-slate-900">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
-            
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-12 mb-12">
             <div className="col-span-1">
               <div className="flex items-center gap-3 mb-4">
-                {/* Logo di footer juga diperbesar */}
-                <img src={logo} alt="Raly Ticket Logo" className="h-9 w-auto object-contain" />
-                <span className="font-black uppercase tracking-tighter text-slate-900 text-xl">
+                <img src={logo} alt="Raly Ticket Logo" className="h-8 w-auto object-contain" />
+                <span className="font-black uppercase tracking-tighter text-slate-900 text-lg md:text-xl">
                   Raly Ticket
                 </span>
               </div>
@@ -168,15 +272,14 @@ const MainLayout = ({ children }) => {
               <ul className="space-y-4 text-sm font-bold text-slate-500">
                 <li onClick={() => navigate('/')} className="hover:text-purple-600 cursor-pointer transition-colors">Home</li>
                 <li onClick={() => navigate('/events')} className="hover:text-purple-600 cursor-pointer transition-colors">Events</li>
-                
               </ul>
             </div>
 
             <div>
               <h4 className="font-black uppercase tracking-widest text-xs text-slate-900 mb-6">Support</h4>
               <ul className="space-y-4 text-sm font-bold text-slate-500">
-                <li className="flex items-center gap-2">
-                  <Mail size={16} /> help@ralyticket.com
+                <li className="flex items-center gap-2 break-all md:break-normal">
+                  <Mail size={16} className="min-w-fit" /> help@ralyticket.com
                 </li>
                 <li className="hover:text-purple-600 cursor-pointer transition-colors">Terms of Service</li>
                 <li className="hover:text-purple-600 cursor-pointer transition-colors">Privacy Policy</li>
@@ -195,8 +298,8 @@ const MainLayout = ({ children }) => {
             </div>
           </div>
 
-          <div className="border-t border-slate-100 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-slate-400">
-            <p className="text-[10px] font-black uppercase tracking-[0.3em]">
+          <div className="border-t border-slate-100 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-slate-400 text-center md:text-left">
+            <p className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em]">
               © 2026 RALY TICKET. ALL RIGHTS RESERVED.
             </p>
             <div className="flex gap-6">
