@@ -21,7 +21,6 @@ const MainLayout = ({ children }) => {
     const newLang = lang === 'id' ? 'en' : 'id';
     setLang(newLang);
     localStorage.setItem('lang', newLang);
-    // Trigger event agar komponen lain tahu bahasa berubah
     window.dispatchEvent(new Event('languageChanged'));
   };
 
@@ -56,21 +55,25 @@ const MainLayout = ({ children }) => {
     e.target.style.opacity = '0';
   };
 
-  // --- SYNC USER DATA ---
+  // --- SYNC USER DATA (PERBAIKAN DI SINI) ---
   const syncUserData = useCallback(() => {
-    const token = localStorage.getItem('accessToken'); 
+    // SINKRONISASI: Cek 'token' (sesuai Login.jsx) atau 'accessToken' sebagai fallback
+    const token = localStorage.getItem('token') || localStorage.getItem('accessToken'); 
     const storedUser = localStorage.getItem('user'); 
     
     if (token && storedUser) {
       setIsLoggedIn(true);
       try {
         const parsed = JSON.parse(storedUser);
+        // Pastikan avatar terisi jika hanya ada seed
         if (parsed && !parsed.avatar && parsed.avatar_seed) {
             parsed.avatar = `https://api.dicebear.com/9.x/toon-head/svg?seed=${parsed.avatar_seed}`;
         }
         setUserData(parsed);
       } catch (e) {
+        console.error("Error parsing user data", e);
         setUserData(null);
+        setIsLoggedIn(false);
       }
     } else {
       setIsLoggedIn(false);
@@ -100,25 +103,29 @@ const MainLayout = ({ children }) => {
     updateCartStatus();
     setIsMobileMenuOpen(false); 
 
+    // Listeners untuk perubahan state global
     window.addEventListener('cartUpdated', updateCartStatus);
     window.addEventListener('storage', syncUserData);
     window.addEventListener('profileUpdated', syncUserData);
+    // Tambahan: agar saat login sukses langsung berubah
+    window.addEventListener('loginSuccess', syncUserData);
 
     return () => {
       window.removeEventListener('cartUpdated', updateCartStatus);
       window.removeEventListener('storage', syncUserData);
       window.removeEventListener('profileUpdated', syncUserData);
+      window.removeEventListener('loginSuccess', syncUserData);
     };
   }, [location.pathname, syncUserData, updateCartStatus]);
 
   const handleLogout = () => {
+    localStorage.removeItem('token'); // Hapus 'token'
     localStorage.removeItem('accessToken');
     localStorage.removeItem('user');
     setIsLoggedIn(false);
     setUserData(null);
     setShowDropdown(false);
     navigate('/login');
-    // Force event agar auth state di tempat lain ikut update
     window.dispatchEvent(new Event('storage'));
   };
 
@@ -201,7 +208,7 @@ const MainLayout = ({ children }) => {
             )}
           </Link>
 
-          {/* AUTH SECTION */}
+          {/* AUTH SECTION - SEKARANG HARUSNYA MUNCUL ICON PROFILE */}
           {isLoggedIn ? (
             <div className="relative">
               <button onClick={() => setShowDropdown(!showDropdown)} className="flex items-center gap-2 bg-slate-800/50 p-1 md:pr-4 rounded-full hover:bg-slate-800 transition border border-slate-700 group">
@@ -230,7 +237,6 @@ const MainLayout = ({ children }) => {
                       <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Authenticated As</p>
                       <p className="text-xs font-black text-slate-900 truncate">{userData?.name || 'User'}</p>
                     </div>
-                    {/* REDIRECT KE OVERVIEW */}
                     <Link to="/dashboard/overview" onClick={() => setShowDropdown(false)} className="flex items-center gap-3 px-5 py-3.5 text-slate-700 hover:bg-purple-50 hover:text-purple-600 transition font-black text-[10px] uppercase tracking-widest">
                       <User size={16} /> {t.dashboard}
                     </Link>

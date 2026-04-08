@@ -7,7 +7,6 @@ import {
 } from "lucide-react";
 
 const ProfileSection = () => {
-  // Mengambil data dan bahasa dari context
   const context = useOutletContext();
   const userData = context?.userData;
   const fetchUserData = context?.fetchUserData;
@@ -15,6 +14,7 @@ const ProfileSection = () => {
 
   const [isUpdating, setIsUpdating] = useState(false);
   const [name, setName] = useState("");
+  
   const [avatarData, setAvatarData] = useState({
     seed: 'Felix',
     backgroundColor: 'b6e3f4',
@@ -25,7 +25,6 @@ const ProfileSection = () => {
     clothes: 'shirt'
   });
 
-  // Objek Terjemahan
   const t = useMemo(() => {
     const translations = {
       id: {
@@ -84,6 +83,7 @@ const ProfileSection = () => {
     { name: 'Dark', hex: '374151' }, { name: 'Red', hex: 'f87171' }, { name: 'Black', hex: '000000' }
   ];
 
+  // Helper untuk buat query string avatar
   const getAvatarUrl = useCallback((data) => {
     return `https://api.dicebear.com/9.x/toon-head/svg?seed=${data.seed}&backgroundColor=${data.backgroundColor}&hair=${data.hair}&hairColor=${data.hairColor}&mouth=${data.mouth}&clothesColor=${data.clothesColor}&clothes=${data.clothes}`;
   }, []);
@@ -91,51 +91,62 @@ const ProfileSection = () => {
   useEffect(() => {
     if (userData) {
       setName(userData.name || "");
-      if (userData.avatar && userData.avatar.includes('dicebear.com')) {
+      const source = userData.avatar_seed || userData.avatar || "";
+      if (source.includes('dicebear.com')) {
         try {
-          const urlObj = new URL(userData.avatar);
+          const url = new URL(source);
+          const params = url.searchParams;
           setAvatarData({
-            seed: urlObj.searchParams.get('seed') || 'Felix',
-            backgroundColor: urlObj.searchParams.get('backgroundColor') || 'b6e3f4',
-            hair: urlObj.searchParams.get('hair') || 'bun',
-            hairColor: urlObj.searchParams.get('hairColor') || '2c1b18',
-            mouth: urlObj.searchParams.get('mouth') || 'laugh',
-            clothesColor: urlObj.searchParams.get('clothesColor') || '0b3286',
-            clothes: urlObj.searchParams.get('clothes') || 'shirt'
+            seed: params.get('seed') || 'Felix',
+            backgroundColor: params.get('backgroundColor') || 'b6e3f4',
+            hair: params.get('hair') || 'bun',
+            hairColor: params.get('hairColor') || '2c1b18',
+            mouth: params.get('mouth') || 'laugh',
+            clothesColor: params.get('clothesColor') || '0b3286',
+            clothes: params.get('clothes') || 'shirt'
           });
         } catch (e) {
-          console.error("Error parsing avatar URL:", e);
+          console.error("Gagal parsing avatar:", e);
         }
       }
     }
   }, [userData]);
 
   const handleSave = async () => {
+    if (!name) return alert("Nama tidak boleh kosong!");
     setIsUpdating(true);
+    
+    // Kita buat URL lengkap sebagai "seed" kustom agar Backend menerimanya
     const finalAvatarUrl = getAvatarUrl(avatarData);
     
     try {
-      const response = await api.patch("/auth/update-profile", { 
+      // PERBAIKAN: Kirim field 'avatar_seed' sesuai permintaan Backend
+      await api.patch("/auth/update-profile", { 
         name: name,
-        avatar: finalAvatarUrl,       
-        avatar_seed: avatarData.seed  
+        avatar_seed: finalAvatarUrl // Backend minta avatar_seed, kita beri URL lengkapnya di sini
       });
       
-      const updatedUserFromServer = response.data?.user || response.data;
+      // Update LocalStorage agar UI langsung berubah
       const currentUser = JSON.parse(localStorage.getItem('user')) || {};
-      const mergedUser = { 
+      const updatedUser = { 
         ...currentUser, 
-        ...updatedUserFromServer,
         name: name, 
-        avatar: finalAvatarUrl 
+        avatar: finalAvatarUrl,
+        avatar_seed: finalAvatarUrl
       };
-      localStorage.setItem('user', JSON.stringify(mergedUser));
+      
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      
+      // Trigger event untuk komponen lain
       window.dispatchEvent(new Event('profileUpdated'));
-      alert(t.success);
-      if (fetchUserData) fetchUserData();
+      window.dispatchEvent(new Event('storage')); 
 
+      if (fetchUserData) await fetchUserData();
+      
+      alert(t.success);
     } catch (err) {
-      alert(err.response?.data?.message || t.error);
+      console.error("Error 422 Fix:", err.response?.data);
+      alert(err.response?.data?.error || t.error);
     } finally {
       setIsUpdating(false);
     }
@@ -143,8 +154,6 @@ const ProfileSection = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-6 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      
-      {/* PAGE TITLE */}
       <div className="mb-8 md:mb-10 flex flex-col sm:flex-row items-center sm:items-start gap-4 text-center sm:text-left">
         <div className="p-3 bg-purple-600 rounded-2xl shadow-lg shadow-purple-200 text-white shrink-0">
             <User size={28} />
@@ -156,11 +165,7 @@ const ProfileSection = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 items-start">
-        
-        {/* KOLOM KIRI: SETTINGS FORM */}
         <div className="lg:col-span-8 space-y-6 md:space-y-8 order-2 lg:order-1">
-          
-          {/* IDENTITY CARD */}
           <div className="bg-white p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] shadow-xl border border-slate-100 relative overflow-hidden">
             <div className="absolute top-0 right-0 p-8 opacity-5 hidden sm:block text-slate-900">
                 <Settings size={120} />
@@ -197,7 +202,6 @@ const ProfileSection = () => {
             </div>
           </div>
 
-          {/* AVATAR CUSTOMIZER CARD */}
           <div className="bg-white p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] shadow-xl border border-slate-100">
             <div className="flex items-center gap-3 mb-6 md:mb-8">
               <div className="w-1.5 h-6 bg-indigo-600 rounded-full"></div>
@@ -299,7 +303,6 @@ const ProfileSection = () => {
           </div>
         </div>
 
-        {/* KOLOM KANAN: STICKY PREVIEW */}
         <div className="lg:col-span-4 lg:sticky lg:top-32 space-y-6 order-1 lg:order-2">
           <div className="bg-white p-6 md:p-8 rounded-[2rem] md:rounded-[3rem] shadow-2xl border border-slate-100 flex flex-col items-center text-center relative overflow-hidden">
             <div className="absolute -top-10 -left-10 w-24 h-24 md:w-32 md:h-32 bg-purple-50 rounded-full blur-3xl opacity-60"></div>

@@ -33,10 +33,15 @@ const ScrollToTop = () => {
  * Proteksi Halaman: Cek apakah token ada
  */
 const ProtectedRoute = ({ children }) => {
-  const token = localStorage.getItem('accessToken');
+  // PERBAIKAN: Ambil 'token' (sesuai standar Login.jsx yang baru)
+  // Kita tambahkan fallback ke 'accessToken' agar lebih aman
+  const token = localStorage.getItem('token') || localStorage.getItem('accessToken');
   const location = useLocation();
   
   if (!token) {
+    // Debugging (opsional, hapus jika sudah lancar)
+    console.warn("Akses ditolak: Token tidak ditemukan. Mengalihkan ke login...");
+    
     // Balikkan ke login jika token tidak ada
     return <Navigate to="/login" state={{ from: location }} replace />;
   }

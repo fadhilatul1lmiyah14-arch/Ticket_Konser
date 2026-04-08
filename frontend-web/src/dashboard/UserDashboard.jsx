@@ -16,12 +16,9 @@ const UserDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [userData, setUserData] = useState(null);
   
-  // Ambil bahasa dari localStorage atau default ke 'id'
   const [lang, setLang] = useState(localStorage.getItem("lang") || "id");
-
   const isUpdatingRef = useRef(false);
 
-  // Sync bahasa saat ada perubahan di komponen lain (misal MainLayout)
   useEffect(() => {
     const handleLangChange = () => {
       setLang(localStorage.getItem("lang") || "id");
@@ -42,10 +39,17 @@ const UserDashboard = () => {
     if (savedUser) {
       try {
         const parsed = JSON.parse(savedUser);
-        if (parsed && !parsed.avatar && parsed.avatar_seed) {
-          parsed.avatar = `https://api.dicebear.com/9.x/toon-head/svg?seed=${parsed.avatar_seed}`;
+        if (parsed) {
+          // PERBAIKAN: Deteksi apakah avatar sudah berupa URL lengkap yang punya kustomisasi
+          // Jika URL sudah mengandung '?' atau '&', berarti itu URL kustom, jangan ditimpa.
+          const hasCustomization = parsed.avatar && (parsed.avatar.includes('?') || parsed.avatar.includes('&'));
+
+          if (!hasCustomization && parsed.avatar_seed) {
+            parsed.avatar = `https://api.dicebear.com/9.x/toon-head/svg?seed=${parsed.avatar_seed}`;
+          }
+          
+          setUserData(parsed);
         }
-        setUserData(parsed);
         setLoading(false); 
       } catch (e) {
         console.error("Gagal parse data local:", e);
@@ -54,7 +58,8 @@ const UserDashboard = () => {
   }, []);
 
   const fetchUserData = useCallback(async () => {
-    const token = localStorage.getItem('accessToken');
+    const token = localStorage.getItem('token') || localStorage.getItem('accessToken');
+    
     if (!token) {
       navigate("/login");
       return;
@@ -69,15 +74,21 @@ const UserDashboard = () => {
       
       if (user) {
         const updatedUser = { ...user };
-        if (!updatedUser.avatar) {
+        
+        // Hanya buat URL default jika backend tidak mengirimkan field avatar sama sekali
+        const hasCustomization = updatedUser.avatar && (updatedUser.avatar.includes('?') || updatedUser.avatar.includes('&'));
+        
+        if (!hasCustomization) {
           updatedUser.avatar = `https://api.dicebear.com/9.x/toon-head/svg?seed=${user.avatar_seed || 'Felix'}`;
         }
+        
         localStorage.setItem("user", JSON.stringify(updatedUser));
         setUserData(updatedUser);
       }
     } catch (error) {
       console.error("Fetch Error:", error);
       if (error.response?.status === 401) {
+        localStorage.removeItem('token');
         localStorage.removeItem('accessToken');
         localStorage.removeItem('user');
         navigate("/login");
@@ -90,11 +101,9 @@ const UserDashboard = () => {
 
   useEffect(() => {
     loadLocalData();
-    fetchUserData();
-
+    
     const handleUpdate = () => {
       loadLocalData();
-      fetchUserData();
     };
 
     window.addEventListener('profileUpdated', handleUpdate);
@@ -104,11 +113,12 @@ const UserDashboard = () => {
       window.removeEventListener('profileUpdated', handleUpdate);
       window.removeEventListener('storage', handleUpdate);
     };
-  }, [fetchUserData, loadLocalData]);
+  }, [loadLocalData]);
 
   const handleLogout = () => {
     const msg = lang === "id" ? "Apakah Anda yakin ingin keluar?" : "Are you sure you want to logout?";
     if (window.confirm(msg)) {
+      localStorage.removeItem('token');
       localStorage.removeItem('accessToken');
       localStorage.removeItem('user');
       window.dispatchEvent(new Event("storage"));
@@ -140,12 +150,10 @@ const UserDashboard = () => {
 
   return (
     <div className="flex min-h-screen bg-[#F8FAFC] font-sans overflow-x-hidden relative">
-      {/* Overlay Mobile */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] lg:hidden" onClick={() => setIsMobileMenuOpen(false)} />
       )}
 
-      {/* Sidebar */}
       <aside className={`fixed top-0 left-0 h-screen bg-[#0F172A] text-white flex flex-col z-[110] transition-all duration-300 
         ${isSidebarCollapsed ? "w-20" : "w-72"} 
         ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
@@ -193,7 +201,6 @@ const UserDashboard = () => {
         </div>
       </aside>
 
-      {/* Main Content */}
       <main className={`flex-1 flex flex-col min-h-screen transition-all duration-300 w-full ${isSidebarCollapsed ? "lg:ml-20" : "lg:ml-72"}`}>
         <header className="sticky top-0 bg-[#F8FAFC]/90 backdrop-blur-xl z-50 px-4 md:px-10 py-5 flex items-center justify-between border-b border-slate-200/60">
           <div className="flex items-center gap-4">
@@ -218,7 +225,8 @@ const UserDashboard = () => {
                 </div>
                 <div className="w-10 h-10 bg-slate-900 rounded-2xl flex items-center justify-center overflow-hidden border-2 border-white shadow-lg relative shrink-0">
                    <img 
-                    src={userData?.avatar || `https://api.dicebear.com/9.x/toon-head/svg?seed=${userData?.avatar_seed || 'Felix'}`} 
+                    key={userData?.avatar}
+                    src={userData?.avatar} 
                     alt="Profile" 
                     className="w-full h-full object-cover"
                     onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${userData?.name}&background=6366f1&color=fff`; }} 
@@ -229,7 +237,6 @@ const UserDashboard = () => {
         </header>
         
         <div className="flex-1 p-4 md:p-10 w-full max-w-full">
-          {/* Outlet mengirimkan context agar sub-halaman bisa akses data user langsung */}
           <Outlet context={{ userData, fetchUserData, lang }} />
         </div>
 

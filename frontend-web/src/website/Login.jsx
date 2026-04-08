@@ -15,11 +15,12 @@ const Login = () => {
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  // Cek jika user sudah login, langsung lempar ke dashboard atau home
+  // Cek jika user sudah login, arahkan ke Home atau Dashboard sesuai kebutuhan
   useEffect(() => {
-    const token = localStorage.getItem('accessToken');
+    const token = localStorage.getItem('token') || localStorage.getItem('accessToken');
     if (token) {
-      navigate('/dashboard/overview', { replace: true });
+      // Jika sudah login, lempar ke Home saja karena user mungkin mau browsing event dulu
+      navigate('/', { replace: true });
     }
   }, [navigate]);
 
@@ -64,7 +65,8 @@ const Login = () => {
     setError('');
 
     try {
-      // Bersihkan data lama agar tidak konflik
+      // 1. Bersihkan data lama
+      localStorage.removeItem('token');
       localStorage.removeItem('accessToken');
       localStorage.removeItem('user');
 
@@ -75,26 +77,23 @@ const Login = () => {
 
       const data = response.data;
 
-      // Logika penentuan token yang fleksibel sesuai response backend
-      const token = data.accessToken || data.token || (data.status === "success" && data.data?.token);
+      // 2. Ambil token (fleksibel mengikuti struktur backend)
+      const token = data.accessToken || data.token || data.data?.token;
+      const userData = data.user || data.data?.user;
 
       if (token) {
-        // 1. Simpan Token
-        localStorage.setItem('accessToken', token); 
+        // 3. Simpan ke LocalStorage (Gunakan key 'token' agar dashboard & axios sinkron)
+        localStorage.setItem('token', token); 
         
-        // 2. Simpan User Data jika ada
-        if (data.user) {
-          localStorage.setItem('user', JSON.stringify(data.user));
-        } else if (data.data?.user) {
-          localStorage.setItem('user', JSON.stringify(data.data.user));
+        if (userData) {
+          localStorage.setItem('user', JSON.stringify(userData));
         }
         
-        // 3. Trigger Navbar update tanpa reload halaman
+        // 4. Trigger event storage agar Navbar segera update (Tombol Login jadi Profile/Dashboard)
         window.dispatchEvent(new Event("storage"));
 
-        // 4. Navigasi: Jika ada 'from', balik ke sana. Jika tidak, ke Home.
-        const origin = location.state?.from?.pathname || '/';
-        navigate(origin, { replace: true });
+        // 5. SESUAI PERMINTAAN: Diarahkan ke Halaman Utama (Home)
+        navigate('/', { replace: true });
         
       } else {
         setError(data.message || getTranslation('errAuth'));
@@ -102,9 +101,9 @@ const Login = () => {
 
     } catch (err) {
       console.error("Login Error Details:", err.response?.data);
-      const errorMessage = err.response?.data?.message || 
-                           err.response?.data?.error || 
-                           getTranslation('errAuth');
+      const errorMessage = err.response?.data?.error || 
+                           err.response?.data?.message || 
+                           getTranslation('errServer');
       setError(errorMessage);
     } finally {
       setIsLoading(false);
@@ -115,8 +114,10 @@ const Login = () => {
     <div className="min-h-screen w-full flex items-center justify-center bg-slate-100 p-4 sm:p-6 font-sans text-left">
       <div className="flex flex-col md:flex-row w-full max-w-4xl bg-white rounded-[40px] md:rounded-[50px] shadow-2xl overflow-hidden border border-slate-100 animate-in fade-in zoom-in duration-500 relative">
         
+        {/* Sisi Kiri: Form Login */}
         <div className="flex-1 p-8 sm:p-10 md:p-14 flex flex-col justify-center bg-white order-1 relative">
           
+          {/* Switcher Bahasa */}
           <div className="absolute top-8 right-8 flex items-center bg-slate-50 p-1 rounded-xl border border-slate-200 shadow-sm z-20">
             <button 
               type="button"
@@ -203,6 +204,7 @@ const Login = () => {
           </div>
         </div>
 
+        {/* Sisi Kanan: Info Register */}
         <div className="w-full md:w-[380px] bg-purple-700 p-10 md:p-14 flex flex-col items-center justify-center text-center text-white relative overflow-hidden order-2">
           <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-purple-600 rounded-full opacity-20"></div>
           <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-48 h-48 bg-purple-800 rounded-full opacity-30"></div>
