@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Mail, Lock, Loader2, Eye, EyeOff } from 'lucide-react';
 import api from '../api/axiosConfig'; 
@@ -14,6 +14,14 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+
+  // Cek jika user sudah login, langsung lempar ke dashboard atau home
+  useEffect(() => {
+    const token = localStorage.getItem('accessToken');
+    if (token) {
+      navigate('/dashboard/overview', { replace: true });
+    }
+  }, [navigate]);
 
   const translations = {
     id: {
@@ -56,31 +64,47 @@ const Login = () => {
     setError('');
 
     try {
-      // 1. Kirim request ke endpoint customer
+      // Bersihkan data lama agar tidak konflik
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('user');
+
       const response = await api.post('/auth/login/customer', {
         email: email,
         password: password
       });
 
-      // 2. BACKEND kirim { status, accessToken, user, message }
-      const { accessToken, user, status } = response.data;
+      const data = response.data;
 
-      if (status === "success" && accessToken) {
-        // 3. Simpan token (gunakan nama yang konsisten 'token')
-        localStorage.setItem('token', accessToken);      
-        localStorage.setItem('user', JSON.stringify(user));
+      // Logika penentuan token yang fleksibel sesuai response backend
+      const token = data.accessToken || data.token || (data.status === "success" && data.data?.token);
+
+      if (token) {
+        // 1. Simpan Token
+        localStorage.setItem('accessToken', token); 
         
-        // 4. Redirect ke home
-        navigate('/'); 
-        window.location.reload(); // Opsional: Memastikan state navbar terupdate
+        // 2. Simpan User Data jika ada
+        if (data.user) {
+          localStorage.setItem('user', JSON.stringify(data.user));
+        } else if (data.data?.user) {
+          localStorage.setItem('user', JSON.stringify(data.data.user));
+        }
+        
+        // 3. Trigger Navbar update tanpa reload halaman
+        window.dispatchEvent(new Event("storage"));
+
+        // 4. Navigasi: Jika ada 'from', balik ke sana. Jika tidak, ke Home.
+        const origin = location.state?.from?.pathname || '/';
+        navigate(origin, { replace: true });
+        
       } else {
-        setError(getTranslation('errServer'));
+        setError(data.message || getTranslation('errAuth'));
       }
 
     } catch (err) {
-      console.error("Login Error:", err);
-      // Mengambil pesan error dari backend jika ada
-      const errorMessage = err.response?.data?.error || getTranslation('errAuth');
+      console.error("Login Error Details:", err.response?.data);
+      const errorMessage = err.response?.data?.message || 
+                           err.response?.data?.error || 
+                           getTranslation('errAuth');
       setError(errorMessage);
     } finally {
       setIsLoading(false);
@@ -91,16 +115,16 @@ const Login = () => {
     <div className="min-h-screen w-full flex items-center justify-center bg-slate-100 p-4 sm:p-6 font-sans text-left">
       <div className="flex flex-col md:flex-row w-full max-w-4xl bg-white rounded-[40px] md:rounded-[50px] shadow-2xl overflow-hidden border border-slate-100 animate-in fade-in zoom-in duration-500 relative">
         
-        {/* SISI KIRI: FORMULIR */}
         <div className="flex-1 p-8 sm:p-10 md:p-14 flex flex-col justify-center bg-white order-1 relative">
           
-          {/* LANGUAGE SELECTOR */}
           <div className="absolute top-8 right-8 flex items-center bg-slate-50 p-1 rounded-xl border border-slate-200 shadow-sm z-20">
             <button 
+              type="button"
               onClick={() => setLang('id')}
               className={`px-3 py-1 text-[10px] font-black rounded-lg transition-all ${lang === 'id' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-slate-600'}`}
             >ID</button>
             <button 
+              type="button"
               onClick={() => setLang('en')}
               className={`px-3 py-1 text-[10px] font-black rounded-lg transition-all ${lang === 'en' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-slate-600'}`}
             >EN</button>
@@ -172,14 +196,13 @@ const Login = () => {
 
           <div className="mt-10 text-center">
             <p className="text-[10px] font-black text-slate-400 mb-4 uppercase tracking-widest">{getTranslation('orSign')}</p>
-            <button className="w-full border-2 border-slate-900 py-3.5 rounded-2xl flex items-center justify-center gap-3 font-black hover:bg-slate-50 transition active:scale-95">
+            <button type="button" className="w-full border-2 border-slate-900 py-3.5 rounded-2xl flex items-center justify-center gap-3 font-black hover:bg-slate-50 transition active:scale-95">
               <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/auth_service_google.svg" className="w-5 h-5" alt="Google" />
               <span className="text-xs font-black uppercase tracking-wider">{getTranslation('googleSign')}</span>
             </button>
           </div>
         </div>
 
-        {/* SISI KANAN: PANEL UNGU */}
         <div className="w-full md:w-[380px] bg-purple-700 p-10 md:p-14 flex flex-col items-center justify-center text-center text-white relative overflow-hidden order-2">
           <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-purple-600 rounded-full opacity-20"></div>
           <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-48 h-48 bg-purple-800 rounded-full opacity-30"></div>
@@ -188,6 +211,7 @@ const Login = () => {
             <h2 className="text-3xl sm:text-4xl font-black mb-4 italic uppercase leading-tight">{getTranslation('newHere')}</h2>
             <p className="text-sm font-medium mb-10 leading-relaxed opacity-90 max-w-[250px] mx-auto">{getTranslation('descNew')}</p>
             <button 
+              type="button"
               onClick={() => navigate('/register')} 
               className="border-2 border-white px-12 py-3.5 rounded-full font-black uppercase tracking-widest hover:bg-white hover:text-purple-700 transition-all active:scale-95 text-[11px]"
             >

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { useOutletContext, Link } from "react-router-dom";
+import { useOutletContext, Link, useNavigate } from "react-router-dom";
 import api from "../api/axiosConfig"; 
 import { 
   Ticket, ShoppingBag, Clock, ArrowRight, Sparkles,
@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 
 const DashboardOverview = () => {
-  // Ambil context. Pastikan lang didefinisikan, jika tidak default ke "id"
+  const navigate = useNavigate();
   const context = useOutletContext();
   const lang = context?.lang || "id";
   const userData = context?.userData || null;
@@ -20,7 +20,7 @@ const DashboardOverview = () => {
   });
   const [loading, setLoading] = useState(true);
 
-  // Pakai useMemo untuk mencegah re-render object yang tidak perlu
+  // Terjemahan
   const t = useMemo(() => {
     const translations = {
       id: {
@@ -38,8 +38,6 @@ const DashboardOverview = () => {
         activity: "Aktivitas",
         noActivity: "Belum ada aktivitas",
         justNow: "Baru saja",
-        offerTitle: "Penawaran Eksklusif",
-        offerDesc: "Dapatkan diskon 10% untuk event perdana!",
         totalLabel: "Total"
       },
       en: {
@@ -57,8 +55,6 @@ const DashboardOverview = () => {
         activity: "Activity",
         noActivity: "No activity yet",
         justNow: "Just now",
-        offerTitle: "Exclusive Offer",
-        offerDesc: "Get 10% discount for your first event!",
         totalLabel: "Total"
       }
     };
@@ -67,8 +63,17 @@ const DashboardOverview = () => {
 
   useEffect(() => {
     const fetchDashboardStats = async () => {
+      // --- GUARD CLAUSE ---
+      // Jangan tembak API jika token tidak ada di localStorage
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setLoading(false);
+        return navigate('/login'); 
+      }
+
       try {
         setLoading(true);
+        // Menggunakan api (axios instance) yang sudah ada interceptor-nya
         const [ticketsRes, ordersRes] = await Promise.allSettled([
           api.get("/customer/tickets"), 
           api.get("/customer/orders")    
@@ -79,25 +84,25 @@ const DashboardOverview = () => {
 
         setDataStats({
           totalTickets: tickets.length,
-          activeOrders: orders.filter(o => o.status === "PAID").length,
-          pendingPayments: orders.filter(o => o.status === "PENDING").length,
+          activeOrders: orders.filter(o => o.status === "PAID" || o.status === "SUCCESS").length,
+          pendingPayments: orders.filter(o => o.status === "PENDING" || o.status === "UNPAID").length,
           recentActivity: orders.slice(0, 4) 
         });
       } catch (error) {
-        console.error("Stats Error:", error);
+        console.error("Dashboard Fetch Error:", error);
       } finally {
         setLoading(false);
       }
     };
 
     fetchDashboardStats();
-  }, []);
+  }, [navigate]); // Hanya jalan sekali saat mount
 
   return (
     <div className="max-w-[1600px] mx-auto space-y-6 animate-in fade-in duration-500">
       
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-[2rem] border border-slate-100">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
         <div>
           <h2 className="text-2xl font-black text-slate-900 uppercase italic">{t.title}</h2>
           <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">{t.subtitle}</p>
@@ -113,15 +118,15 @@ const DashboardOverview = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-8 space-y-6">
-          {/* Stats */}
+          {/* Stats Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <StatCard label={t.statTickets} value={dataStats.totalTickets} icon={<Ticket />} color="text-purple-600" bgColor="bg-purple-600" loading={loading} totalLabel={t.totalLabel} />
             <StatCard label={t.statPaid} value={dataStats.activeOrders} icon={<TrendingUp />} color="text-emerald-500" bgColor="bg-emerald-500" loading={loading} totalLabel={t.totalLabel} />
             <StatCard label={t.statPending} value={dataStats.pendingPayments} icon={<Clock />} color="text-amber-500" bgColor="bg-amber-500" loading={loading} totalLabel={t.totalLabel} />
           </div>
 
-          {/* Banner */}
-          <div className="bg-slate-900 rounded-[2.5rem] p-8 md:p-12 text-white relative overflow-hidden">
+          {/* Welcome Banner */}
+          <div className="bg-slate-900 rounded-[2.5rem] p-8 md:p-12 text-white relative overflow-hidden shadow-xl">
             <div className="relative z-10 space-y-4">
               <div className="inline-flex items-center gap-2 bg-white/10 px-3 py-1 rounded-full border border-white/10">
                 <span className="text-[10px] font-black uppercase tracking-widest">{t.verified}</span>
@@ -130,16 +135,18 @@ const DashboardOverview = () => {
                 {t.welcome} {userData?.name?.split(' ')[0] || "User"}!
               </h3>
               <p className="text-slate-400 max-w-md text-sm italic">{t.bannerText}</p>
-              <Link to="/events" className="inline-flex items-center gap-3 bg-white text-slate-900 px-8 py-4 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-purple-500 hover:text-white transition-all">
+              <Link to="/events" className="inline-flex items-center gap-3 bg-white text-slate-900 px-8 py-4 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-purple-500 hover:text-white transition-all shadow-lg active:scale-95">
                 {t.findEvent} <ArrowRight size={16} />
               </Link>
             </div>
+            {/* Dekorasi Aset */}
+            <div className="absolute top-[-20%] right-[-10%] w-64 h-64 bg-purple-600/20 rounded-full blur-[100px]" />
           </div>
         </div>
 
         {/* Sidebar Activity */}
         <div className="lg:col-span-4">
-          <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm h-full">
+          <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm min-h-[400px]">
             <div className="flex items-center gap-3 mb-8">
               <div className="bg-slate-900 p-2 rounded-xl text-white"><Activity size={18} /></div>
               <h4 className="font-black text-slate-900 uppercase italic text-lg">{t.activity}</h4>
@@ -147,25 +154,30 @@ const DashboardOverview = () => {
 
             <div className="space-y-6">
               {loading ? (
-                <div className="flex justify-center py-10"><Loader2 className="animate-spin text-purple-600" /></div>
+                <div className="flex flex-col items-center justify-center py-20 gap-3">
+                  <Loader2 className="animate-spin text-purple-600" size={32} />
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Memuat Data...</p>
+                </div>
               ) : dataStats.recentActivity.length > 0 ? (
                 dataStats.recentActivity.map((act, i) => (
-                  <div key={i} className="pl-6 border-l-2 border-slate-100 relative">
-                    <div className="absolute -left-[9px] top-0 w-4 h-4 bg-white border-2 border-slate-200 rounded-full" />
+                  <div key={act.id || i} className="pl-6 border-l-2 border-slate-100 relative group">
+                    <div className="absolute -left-[9px] top-0 w-4 h-4 bg-white border-2 border-slate-200 rounded-full group-hover:border-purple-500 transition-colors" />
                     <p className="text-[10px] font-black text-slate-400 uppercase mb-1">
                       {act.created_at ? new Date(act.created_at).toLocaleDateString() : t.justNow}
                     </p>
-                    {/* PERBAIKAN: Pastikan ini string */}
                     <p className="text-sm font-black text-slate-800 uppercase italic line-clamp-1">
-                      {typeof act.event_name === 'string' ? act.event_name : `Order #${act.id?.slice(0,5)}`}
+                      {act.event?.title || act.event_name || `Order #${String(act.id).slice(-5)}`}
                     </p>
-                    <div className="inline-block mt-2 px-3 py-1 rounded-lg text-[9px] font-black uppercase bg-slate-100 text-slate-600">
-                      {String(act.status)}
+                    <div className={`inline-block mt-2 px-3 py-1 rounded-lg text-[9px] font-black uppercase ${
+                      act.status === 'PAID' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-600'
+                    }`}>
+                      {act.status}
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="text-center py-10 opacity-30">
+                <div className="text-center py-20 opacity-30 flex flex-col items-center gap-2">
+                  <ShoppingBag size={40} />
                   <p className="text-[10px] font-black uppercase">{t.noActivity}</p>
                 </div>
               )}
@@ -177,16 +189,21 @@ const DashboardOverview = () => {
   );
 };
 
+// Sub-komponen StatCard
 const StatCard = ({ label, value, icon, color, bgColor, loading, totalLabel }) => (
-  <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+  <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:border-purple-200 transition-colors group">
     <div className="flex justify-between items-start mb-4">
-      <div className={`p-3 rounded-2xl ${bgColor} text-white`}>{React.cloneElement(icon, { size: 18 })}</div>
-      <TrendingUp size={12} className={color} />
+      <div className={`p-3 rounded-2xl ${bgColor} text-white shadow-lg`}>
+        {React.cloneElement(icon, { size: 18 })}
+      </div>
+      <TrendingUp size={12} className={`${color} opacity-0 group-hover:opacity-100 transition-opacity`} />
     </div>
-    <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{String(label)}</p>
+    <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{label}</p>
     <div className="flex items-baseline gap-2">
-      <h4 className="text-3xl font-black text-slate-900 italic tracking-tighter">{loading ? "..." : value}</h4>
-      <span className="text-[10px] font-bold text-slate-300 uppercase italic">{String(totalLabel)}</span>
+      <h4 className="text-3xl font-black text-slate-900 italic tracking-tighter">
+        {loading ? "---" : value}
+      </h4>
+      <span className="text-[10px] font-bold text-slate-300 uppercase italic">{totalLabel}</span>
     </div>
   </div>
 );

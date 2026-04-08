@@ -21,7 +21,7 @@ const MainLayout = ({ children }) => {
     const newLang = lang === 'id' ? 'en' : 'id';
     setLang(newLang);
     localStorage.setItem('lang', newLang);
-    // Emit event agar komponen lain tahu bahasa berubah
+    // Trigger event agar komponen lain tahu bahasa berubah
     window.dispatchEvent(new Event('languageChanged'));
   };
 
@@ -52,13 +52,13 @@ const MainLayout = ({ children }) => {
     }
   }[lang];
 
-  // Fungsi pembantu untuk menangani jika gambar logo gagal dimuat
   const handleImageError = (e) => {
-    e.target.style.opacity = '0'; // Menyembunyikan gambar secara halus jika gagal dimuat
+    e.target.style.opacity = '0';
   };
 
+  // --- SYNC USER DATA ---
   const syncUserData = useCallback(() => {
-    const token = localStorage.getItem('userToken') || localStorage.getItem('token');
+    const token = localStorage.getItem('accessToken'); 
     const storedUser = localStorage.getItem('user'); 
     
     if (token && storedUser) {
@@ -101,43 +101,25 @@ const MainLayout = ({ children }) => {
     setIsMobileMenuOpen(false); 
 
     window.addEventListener('cartUpdated', updateCartStatus);
-    const handleStorageChange = () => {
-        syncUserData();
-        updateCartStatus();
-    };
-    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('storage', syncUserData);
     window.addEventListener('profileUpdated', syncUserData);
 
     return () => {
       window.removeEventListener('cartUpdated', updateCartStatus);
-      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('storage', syncUserData);
       window.removeEventListener('profileUpdated', syncUserData);
     };
   }, [location.pathname, syncUserData, updateCartStatus]);
 
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const searchQuery = params.get('search');
-    
-    if (searchQuery) {
-      setNavSearch(searchQuery);
-    } else {
-      if (location.pathname !== '/events') {
-        setNavSearch("");
-      }
-    }
-  }, [location.search, location.pathname]);
-
   const handleLogout = () => {
-    localStorage.removeItem('userToken');
-    localStorage.removeItem('token');
+    localStorage.removeItem('accessToken');
     localStorage.removeItem('user');
-    localStorage.removeItem('userId');
     setIsLoggedIn(false);
     setUserData(null);
     setShowDropdown(false);
-    updateCartStatus();
     navigate('/login');
+    // Force event agar auth state di tempat lain ikut update
+    window.dispatchEvent(new Event('storage'));
   };
 
   const handleSearchSubmit = (e) => {
@@ -160,22 +142,20 @@ const MainLayout = ({ children }) => {
 
   return (
     <div className="bg-[#0f172a] min-h-screen font-sans text-white flex flex-col text-left">
+      {/* NAVBAR */}
       <nav className="bg-[#0f172a]/95 backdrop-blur-md border-b border-slate-800 px-4 md:px-8 py-4 flex justify-between items-center fixed top-0 left-0 right-0 z-50 h-[73px]">
         
+        {/* LOGO */}
         <Link to="/" className="flex items-center gap-2 md:gap-3 group min-w-fit">
           <div className="group-hover:scale-110 transition-transform duration-300">
-            <img 
-              src={logo} 
-              alt="Logo" 
-              className="h-8 md:h-10 w-auto object-contain" 
-              onError={handleImageError}
-            />
+            <img src={logo} alt="Logo" className="h-8 md:h-10 w-auto object-contain" onError={handleImageError} />
           </div>
           <h1 className="text-lg md:text-2xl font-black tracking-tighter uppercase italic text-white leading-none">
             Raly Ticket
           </h1>
         </Link>
 
+        {/* SEARCH DESKTOP */}
         <div className="hidden lg:flex flex-1 justify-center max-w-md mx-8">
           <form onSubmit={handleSearchSubmit} className="relative w-full group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-purple-500 transition-colors" size={18} />
@@ -194,13 +174,14 @@ const MainLayout = ({ children }) => {
           </form>
         </div>
 
+        {/* NAV LINKS & ACTIONS */}
         <div className="flex items-center gap-3 md:gap-6">
           <div className="hidden md:flex items-center gap-6 text-[11px] font-black uppercase tracking-[0.2em]">
             <Link to="/" className={`transition ${location.pathname === '/' ? 'text-purple-400' : 'text-white hover:text-purple-400'}`}>{t.home}</Link>
             <Link to="/events" className={`transition ${location.pathname === '/events' ? 'text-purple-400' : 'text-white hover:text-purple-400'}`}>{t.events}</Link>
           </div>
           
-          {/* LANGUAGE SWITCHER */}
+          {/* LANG TOGGLE */}
           <button 
             onClick={toggleLanguage}
             className="flex items-center gap-1.5 bg-slate-800/40 border border-slate-700 px-3 py-1.5 rounded-lg hover:bg-slate-700 transition-all group"
@@ -209,6 +190,7 @@ const MainLayout = ({ children }) => {
             <span className="text-[10px] font-black uppercase tracking-widest">{lang}</span>
           </button>
 
+          {/* CART */}
           <Link to="/cart" className="relative text-white group p-2">
             <ShoppingCart size={22} className="cursor-pointer group-hover:text-purple-400 transition" />
             {hasCartItems && (
@@ -219,38 +201,40 @@ const MainLayout = ({ children }) => {
             )}
           </Link>
 
+          {/* AUTH SECTION */}
           {isLoggedIn ? (
             <div className="relative">
               <button onClick={() => setShowDropdown(!showDropdown)} className="flex items-center gap-2 bg-slate-800/50 p-1 md:pr-4 rounded-full hover:bg-slate-800 transition border border-slate-700 group">
                 <div className="bg-slate-900 w-8 h-8 md:w-9 md:h-9 rounded-full overflow-hidden border border-purple-500/30">
                   <img 
-                    key={userData?.avatar_seed || 'default'}
                     src={userData?.avatar || getAvatarUrl(userData?.avatar_seed)} 
                     alt="Avatar" 
                     className="w-full h-full object-cover" 
-                    onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${userData?.name}&background=6366f1&color=fff`; }}
+                    onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${userData?.name || 'User'}&background=6366f1&color=fff`; }}
                   />
                 </div>
                 <div className="hidden md:flex flex-col items-start leading-none text-left">
                   <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{t.account}</span>
                   <span className="text-[10px] font-black text-white uppercase tracking-tighter max-w-[80px] truncate">
-                    {userData?.name}
+                    {userData?.name || 'User'}
                   </span>
                 </div>
               </button>
 
+              {/* DROPDOWN MENU */}
               {showDropdown && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setShowDropdown(false)}></div>
                   <div className="absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-2xl py-2 border border-slate-100 animate-in fade-in slide-in-from-top-2 duration-300 z-20 overflow-hidden">
-                    <div className="px-5 py-4 border-b border-slate-50 bg-slate-50/50 mb-1">
+                    <div className="px-5 py-4 border-b border-slate-50 bg-slate-50/50 mb-1 text-left">
                       <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Authenticated As</p>
-                      <p className="text-xs font-black text-slate-900 truncate">{userData?.name}</p>
+                      <p className="text-xs font-black text-slate-900 truncate">{userData?.name || 'User'}</p>
                     </div>
+                    {/* REDIRECT KE OVERVIEW */}
                     <Link to="/dashboard/overview" onClick={() => setShowDropdown(false)} className="flex items-center gap-3 px-5 py-3.5 text-slate-700 hover:bg-purple-50 hover:text-purple-600 transition font-black text-[10px] uppercase tracking-widest">
                       <User size={16} /> {t.dashboard}
                     </Link>
-                    <button onClick={handleLogout} className="w-full flex items-center gap-3 px-5 py-3.5 text-red-500 hover:bg-red-50 transition font-black text-[10px] uppercase tracking-widest border-t border-slate-100">
+                    <button onClick={handleLogout} className="w-full flex items-center gap-3 px-5 py-3.5 text-red-500 hover:bg-red-50 transition font-black text-[10px] uppercase tracking-widest border-t border-slate-100 text-left">
                       <LogOut size={16} /> {t.logout}
                     </button>
                   </div>
@@ -263,14 +247,16 @@ const MainLayout = ({ children }) => {
             </Link>
           )}
 
+          {/* MOBILE TOGGLE */}
           <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="md:hidden p-2 text-white">
             {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
       </nav>
 
+      {/* MOBILE MENU */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 top-[73px] bg-[#0f172a] z-[49] animate-in slide-in-from-right duration-300 md:hidden flex flex-col p-6 gap-8">
+        <div className="fixed inset-0 top-[73px] bg-[#0f172a] z-[49] animate-in slide-in-from-right duration-300 md:hidden flex flex-col p-6 gap-8 text-left">
           <form onSubmit={handleSearchSubmit} className="relative group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
             <input 
@@ -283,26 +269,29 @@ const MainLayout = ({ children }) => {
           </form>
 
           <div className="flex flex-col gap-6 text-xl font-black uppercase tracking-[0.1em]">
-            <Link to="/" className={`${location.pathname === '/' ? 'text-purple-400' : 'text-white'}`}>{t.home}</Link>
-            <Link to="/events" className={`${location.pathname === '/events' ? 'text-purple-400' : 'text-white'}`}>{t.events}</Link>
-            {!isLoggedIn && (
-               <Link to="/login" className="text-purple-500 pt-4 border-t border-slate-800">{t.signin}</Link>
+            <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className={`${location.pathname === '/' ? 'text-purple-400' : 'text-white'}`}>{t.home}</Link>
+            <Link to="/events" onClick={() => setIsMobileMenuOpen(false)} className={`${location.pathname === '/events' ? 'text-purple-400' : 'text-white'}`}>{t.events}</Link>
+            {isLoggedIn ? (
+              <Link to="/dashboard/overview" onClick={() => setIsMobileMenuOpen(false)} className="text-purple-400">{t.dashboard}</Link>
+            ) : (
+              <Link to="/login" onClick={() => setIsMobileMenuOpen(false)} className="text-purple-500 pt-4 border-t border-slate-800">{t.signin}</Link>
             )}
           </div>
         </div>
       )}
 
+      {/* MAIN CONTENT */}
       <main className="flex-1 pt-[73px]">
         {children}
       </main>
 
-      {/* --- FOOTER --- */}
+      {/* FOOTER */}
       <footer className="w-full bg-[#0f172a] border-t border-slate-800 pt-16 pb-8 mt-20 font-sans text-white text-left">
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-12 mb-12">
             <div className="col-span-1">
               <div className="flex items-center gap-3 mb-4">
-                <img src={logo} alt="Raly Ticket Logo" className="h-8 w-auto object-contain" />
+                <img src={logo} alt="Logo" className="h-8 w-auto object-contain" />
                 <span className="font-black uppercase tracking-tighter text-white text-lg md:text-xl italic">
                   Raly Ticket
                 </span>
@@ -347,10 +336,6 @@ const MainLayout = ({ children }) => {
             <p className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em]">
               © 2026 RALY TICKET. ALL RIGHTS RESERVED.
             </p>
-            <div className="flex gap-6">
-              <span className="text-[10px] font-black uppercase tracking-widest cursor-pointer hover:text-white transition-colors">Terms</span>
-              <span className="text-[10px] font-black uppercase tracking-widest cursor-pointer hover:text-white transition-colors">Privacy</span>
-            </div>
           </div>
         </div>
       </footer>

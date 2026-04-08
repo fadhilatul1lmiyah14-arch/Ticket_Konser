@@ -19,7 +19,7 @@ import TicketSection from './dashboard/TicketSection';
 import DashboardOverview from './dashboard/DashboardOverview';
 
 /**
- * Komponen Helper: Otomatis scroll ke atas saat pindah rute
+ * Helper: Scroll ke atas otomatis saat ganti halaman
  */
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -30,16 +30,28 @@ const ScrollToTop = () => {
 };
 
 /**
- * Komponen pembungkus untuk memproteksi halaman yang butuh login.
+ * Proteksi Halaman: Cek apakah token ada
  */
 const ProtectedRoute = ({ children }) => {
-  // Pastikan kunci token konsisten dengan yang kamu simpan saat login
-  const token = localStorage.getItem('token') || localStorage.getItem('userToken');
+  const token = localStorage.getItem('accessToken');
+  const location = useLocation();
   
   if (!token) {
-    return <Navigate to="/login" replace />;
+    // Balikkan ke login jika token tidak ada
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  return children;
+};
+
+/**
+ * Proteksi Auth: Mencegah user yang sudah login masuk ke Login/Register
+ */
+const PublicRoute = ({ children }) => {
+  const token = localStorage.getItem('accessToken');
+  if (token) {
+    return <Navigate to="/" replace />;
+  }
   return children;
 };
 
@@ -49,43 +61,23 @@ function App() {
       <ScrollToTop />
       <Routes>
         {/* --- PUBLIC ROUTES --- */}
-        {/* Pastikan LandingPage adalah komponen yang berisi Banner, List Konser, dll */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/events" element={<Events />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
         <Route path="/event/:id" element={<ConcertDetail />} />
         
-        {/* --- PAYMENT SUCCESS ROUTES --- */}
-        {/* Kita pakai satu path saja agar konsisten */}
-        <Route 
-          path="/payment-success" 
-          element={
-            <ProtectedRoute>
-              <Success />
-            </ProtectedRoute>
-          } 
-        />
+        {/* Auth Routes */}
+        <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+        <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+        
+        {/* --- PROTECTED WEB ROUTES --- */}
+        <Route path="/cart" element={<ProtectedRoute><Cart /></ProtectedRoute>} />
+        <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
+        <Route path="/payment-success" element={<ProtectedRoute><Success /></ProtectedRoute>} />
 
-        {/* --- PROTECTED ROUTES --- */}
-        <Route 
-          path="/cart" 
-          element={
-            <ProtectedRoute>
-              <Cart />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/checkout" 
-          element={
-            <ProtectedRoute>
-              <Checkout />
-            </ProtectedRoute>
-          } 
-        />
-
-        {/* --- AREA DASHBOARD USER --- */}
+        {/* --- USER DASHBOARD (NESTED ROUTES) --- */}
+        {/* PERHATIKAN: Path "/dashboard" tidak menggunakan asterisk (*).
+            Komponen didalamnya akan dipanggil berdasarkan route di bawahnya.
+        */}
         <Route 
           path="/dashboard" 
           element={
@@ -94,7 +86,12 @@ function App() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<Navigate to="overview" replace />} />
+          {/* Jika user akses "/dashboard", langsung lempar ke "/dashboard/overview" 
+            Ini krusial agar halaman tidak kosong saat diakses manual
+          */}
+          <Route index element={<Navigate to="/dashboard/overview" replace />} />
+          
+          {/* Child Routes - Path ini relatif terhadap /dashboard */}
           <Route path="overview" element={<DashboardOverview />} />
           <Route path="profile" element={<ProfileSection />} />
           <Route path="orders" element={<OrderSection />} />
