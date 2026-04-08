@@ -6,17 +6,52 @@ import api from '../../api/axiosConfig';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css'; 
 
+// Leaflet Imports
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
 import { 
   X, Calendar, Clock, Loader2, 
   Plus, Trash2, Image as ImageIcon,
-  ShieldCheck, LayoutGrid, Layers, RefreshCcw
+  ShieldCheck, LayoutGrid, Layers, RefreshCcw, MapPin, Navigation, Languages, Sparkles
 } from 'lucide-react';
+
+// Fix for default marker icon in Leaflet
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
+
+// Component to handle map clicks
+const LocationPicker = ({ onLocationSelect }) => {
+  useMapEvents({
+    click(e) {
+      onLocationSelect(e.latlng.lat, e.latlng.lng);
+    },
+  });
+  return null;
+};
+
+const RecenterMap = ({ lat, lng }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (lat && lng) {
+      map.setView([lat, lng], 16);
+    }
+  }, [lat, lng, map]);
+  return null;
+};
 
 const EditConcert = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [activeLang, setActiveLang] = useState('id'); // 'id' or 'en'
+  const [isTranslating, setIsTranslating] = useState(false);
   
   const [categories, setCategories] = useState([]);
   const [locations, setLocations] = useState([]);
@@ -26,20 +61,22 @@ const EditConcert = () => {
   const [casts, setCasts] = useState([]);
   const [inputCast, setInputCast] = useState("");
   
-  const [termsList, setTermsList] = useState([]);
-  const [inputTerm, setInputTerm] = useState("");
+  // Adjusted State Structures
+  const [termsList, setTermsList] = useState([]); // Array of { id: string, en: string }
+  const [inputTerm, setInputTerm] = useState({ id: '', en: '' });
 
   const [ticketTiers, setTicketTiers] = useState([]);
-
-  // Menggunakan Array untuk blok deskripsi
-  const [descriptions, setDescriptions] = useState(['']);
+  const [descriptions, setDescriptions] = useState([{ id: '', en: '' }]);
 
   const [formData, setFormData] = useState({
-    title: '',
+    title: { id: '', en: '' },
     event_date: '',
     start_time: '',
     category_id: '',
     location_id: '',
+    address_details: '',
+    latitude: -6.200000, 
+    longitude: 106.816666,
     status: 'DRAFT'
   });
 
@@ -59,6 +96,54 @@ const EditConcert = () => {
     'color', 'background', 'list', 'link'
   ];
 
+  // Helper function for Google Translate API
+  const translateText = async (text, from = 'id', to = 'en') => {
+    if (!text || text === '<p><br></p>') return text;
+    try {
+      const res = await fetch(
+        `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${from}&tl=${to}&dt=t&q=${encodeURIComponent(text)}`
+      );
+      const data = await res.json();
+      return data[0].map(item => item[0]).join('');
+    } catch (error) {
+      console.error("Translation error:", error);
+      return text;
+    }
+  };
+
+  const handleAutoTranslateAll = async () => {
+    setIsTranslating(true);
+    try {
+      // 1. Translate Title
+      const translatedTitle = await translateText(formData.title.id);
+      setFormData(prev => ({ ...prev, title: { ...prev.title, en: translatedTitle } }));
+
+      // 2. Translate Descriptions
+      const translatedDescs = await Promise.all(
+        descriptions.map(async (desc) => ({
+          id: desc.id,
+          en: await translateText(desc.id)
+        }))
+      );
+      setDescriptions(translatedDescs);
+
+      // 3. Translate Terms
+      const translatedTerms = await Promise.all(
+        termsList.map(async (term) => ({
+          id: term.id,
+          en: await translateText(term.id)
+        }))
+      );
+      setTermsList(translatedTerms);
+
+      alert("✨ Auto-translation complete!");
+    } catch (err) {
+      alert("Failed to translate some parts.");
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -73,51 +158,68 @@ const EditConcert = () => {
         
         const event = eventRes.data?.data || eventRes.data;
         
+        // Parse Title and Language Fields
+        const parseMultiLang = (val) => {
+          try {
+            const parsed = typeof val === 'string' ? JSON.parse(val) : val;
+            return { id: parsed?.id || val || '', en: parsed?.en || val || '' };
+          } catch (e) {
+            return { id: val || '', en: val || '' };
+          }
+        };
+
         setFormData({
-          title: event.title || '',
+          title: parseMultiLang(event.title),
           event_date: event.event_date || '',
           start_time: event.start_time?.substring(0, 5) || '',
           category_id: event.category_id || '',
           location_id: event.location_id || '',
+          address_details: event.address_details || '',
+          latitude: event.latitude ? parseFloat(event.latitude) : -6.200000,
+          longitude: event.longitude ? parseFloat(event.longitude) : 106.816666,
           status: event.status === 'PUBLISH' ? 'PUBLISHED' : (event.status || 'DRAFT')
         });
 
-        // FIX: PENANGANAN DESKRIPSI (Disesuaikan dengan format Array dari Swagger)
+        // Descriptions
         if (event.description) {
-          if (Array.isArray(event.description)) {
-            // Jika sudah array (seperti di Swagger kamu), langsung pakai
-            setDescriptions(event.description.length > 0 ? event.description : ['']);
-          } else {
-            // Fallback jika API tiba-tiba kirim string JSON atau string biasa
-            try {
-              const parsed = JSON.parse(event.description);
-              setDescriptions(Array.isArray(parsed) ? parsed : [event.description]);
-            } catch (e) {
-              setDescriptions([event.description]);
+          try {
+            const parsed = typeof event.description === 'string' ? JSON.parse(event.description) : event.description;
+            if (Array.isArray(parsed)) {
+              setDescriptions(parsed.map(d => parseMultiLang(d)));
+            } else {
+              setDescriptions([parseMultiLang(event.description)]);
             }
+          } catch (e) {
+            setDescriptions([parseMultiLang(event.description)]);
           }
         }
 
         setImageUrls(Array.isArray(event.images) ? event.images : []);
         setCasts(Array.isArray(event.casts) ? event.casts : []);
         
-        if (event.ticket_types && event.ticket_types.length > 0) {
+        if (event.ticket_types?.length > 0) {
           setTicketTiers(event.ticket_types.map(t => ({
             name: t.name,
-            price: t.price.toString(),
-            quota: t.quota.toString()
+            price: (t.price || 0).toString(),
+            quota: (t.quota || 0).toString() 
           })));
         } else {
           setTicketTiers([{ name: 'REGULAR', price: '', quota: '' }]);
         }
         
+        // Terms List
         if (event.terms_conditions) {
-          setTermsList(event.terms_conditions.split('\n').filter(t => t.trim() !== ""));
+          try {
+            const parsedTerms = JSON.parse(event.terms_conditions);
+            setTermsList(Array.isArray(parsedTerms) ? parsedTerms : []);
+          } catch (e) {
+            const legacyTerms = event.terms_conditions.split('\n').filter(t => t.trim() !== "");
+            setTermsList(legacyTerms.map(t => ({ id: t, en: t })));
+          }
         }
 
       } catch (error) {
         console.error("Error loading data:", error);
-        alert("Gagal memuat data konser.");
       } finally {
         setLoading(false);
       }
@@ -128,29 +230,45 @@ const EditConcert = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const addDescriptionBlock = () => setDescriptions([...descriptions, '']);
-  
-  const removeDescriptionBlock = (index) => {
-    if (descriptions.length > 1) {
-      setDescriptions(descriptions.filter((_, i) => i !== index));
+    if (name === "title") {
+      setFormData(prev => ({ ...prev, title: { ...prev.title, [activeLang]: value } }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
     }
   };
 
+  const handleAddressSearch = async () => {
+    if (!formData.address_details || formData.address_details.length < 3) return;
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(formData.address_details)}&limit=1`);
+      const data = await response.json();
+      if (data?.length > 0) {
+        setFormData(prev => ({ ...prev, latitude: parseFloat(data[0].lat), longitude: parseFloat(data[0].lon) }));
+      }
+    } catch (error) { console.error(error); }
+  };
+
+  const handleLocationSelect = async (lat, lng) => {
+    setFormData(prev => ({ ...prev, latitude: lat, longitude: lng }));
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`);
+      const data = await response.json();
+      if (data?.display_name) {
+        setFormData(prev => ({ ...prev, address_details: data.display_name }));
+      }
+    } catch (error) { console.error(error); }
+  };
+
+  const addDescriptionBlock = () => setDescriptions([...descriptions, { id: '', en: '' }]);
+  const removeDescriptionBlock = (index) => descriptions.length > 1 && setDescriptions(descriptions.filter((_, i) => i !== index));
   const handleDescriptionChange = (index, content) => {
     const newDescs = [...descriptions];
-    newDescs[index] = content;
+    newDescs[index][activeLang] = content;
     setDescriptions(newDescs);
   };
 
   const addTicketTier = () => setTicketTiers([...ticketTiers, { name: '', price: '', quota: '' }]);
-  
-  const removeTicketTier = (index) => {
-    if (ticketTiers.length > 1) setTicketTiers(ticketTiers.filter((_, i) => i !== index));
-  };
-
+  const removeTicketTier = (index) => ticketTiers.length > 1 && setTicketTiers(ticketTiers.filter((_, i) => i !== index));
   const handleTierChange = (index, field, value) => {
     const newTiers = [...ticketTiers];
     newTiers[index][field] = field === 'name' ? value.toUpperCase() : value;
@@ -172,28 +290,27 @@ const EditConcert = () => {
   };
 
   const addTerm = () => {
-    if (inputTerm.trim() !== "" && !termsList.includes(inputTerm)) {
-      setTermsList(prev => [...prev, inputTerm]);
-      setInputTerm("");
+    if (inputTerm[activeLang].trim() !== "") {
+      setTermsList(prev => [...prev, { ...inputTerm }]);
+      setInputTerm({ id: '', en: '' });
     }
   };
 
   const handleUpdate = async (e) => {
     e.preventDefault();
-    if (imageUrls.length === 0) {
-      alert("Harap masukkan minimal satu URL gambar!");
-      return;
-    }
+    if (imageUrls.length === 0) return alert("Harap masukkan minimal satu URL gambar!");
 
     setIsUpdating(true);
     try {
       const payload = {
-        title: formData.title,
+        title: JSON.stringify(formData.title),
         category_id: Number(formData.category_id),
         location_id: Number(formData.location_id),
-        // Kirim kembali sebagai array (Sync dengan GET)
-        description: descriptions.filter(d => d.trim() !== ""),
-        terms_conditions: termsList.join('\n'), 
+        address_details: formData.address_details,
+        latitude: formData.latitude,
+        longitude: formData.longitude,
+        description: JSON.stringify(descriptions),
+        terms_conditions: JSON.stringify(termsList), 
         event_date: formData.event_date,
         start_time: formData.start_time,
         status: formData.status === 'PUBLISHED' ? 'PUBLISH' : formData.status, 
@@ -202,7 +319,7 @@ const EditConcert = () => {
         ticket_types: ticketTiers.map(t => ({
           name: t.name,
           price: Number(t.price),
-          quota: Number(t.quota)
+          quota: Number(t.quota) 
         }))
       };
 
@@ -210,8 +327,7 @@ const EditConcert = () => {
       alert("✅ Konser Berhasil Diperbarui!");
       navigate('/admin/manage-concert'); 
     } catch (error) {
-      console.error("ERROR UPDATE EVENT:", error.response?.data);
-      alert("Gagal memperbarui data.");
+      alert(error.response?.data?.message || "Gagal memperbarui data.");
     } finally {
       setIsUpdating(false);
     }
@@ -227,146 +343,153 @@ const EditConcert = () => {
   }
 
   return (
-    <form onSubmit={handleUpdate} className="max-w-7xl mx-auto pb-20 px-4 sm:px-6 lg:px-8 bg-white text-left animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <form onSubmit={handleUpdate} className="max-w-7xl mx-auto pb-20 px-4 sm:px-6 lg:px-8 bg-white text-left">
       
-      {/* HEADER SECTION */}
       <header className="mb-8 md:mb-12 flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-100 pb-8 md:pb-10 gap-6 md:gap-8">
         <div className="space-y-1 w-full md:w-auto">
           <div className="flex items-center gap-3 mb-2">
-            <span className="p-2 bg-slate-900 rounded-xl text-white shadow-xl shadow-slate-200">
+            <span className="p-2 bg-slate-900 rounded-xl text-white">
               <RefreshCcw size={18}/>
             </span>
-            <h2 className="text-[9px] md:text-[11px] font-black text-[#E297C1] uppercase tracking-[0.3em] md:tracking-[0.5em]">Update Mode</h2>
+            <h2 className="text-[11px] font-black text-[#E297C1] uppercase tracking-[0.5em]">Update Mode</h2>
           </div>
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-slate-900 uppercase italic tracking-tighter leading-none">
+          <h1 className="text-4xl md:text-6xl font-black text-slate-900 uppercase italic tracking-tighter">
             Edit <span className="text-slate-200">Concert</span>
           </h1>
         </div>
         
-        <div className="flex items-center gap-3 md:gap-4 w-full md:w-auto">
-            <div className="flex flex-1 md:flex-none bg-slate-50 p-1.5 md:p-2 rounded-[20px] md:rounded-[24px] border border-slate-100 shadow-inner">
-              {['DRAFT', 'PUBLISHED'].map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => setFormData(p => ({...p, status: s}))}
-                  className={`flex-1 md:flex-none px-4 md:px-10 py-3 md:py-4 rounded-[14px] md:rounded-[18px] text-[9px] md:text-[11px] font-black uppercase tracking-widest transition-all duration-500 ${
-                    formData.status === s 
-                      ? (s === 'PUBLISHED' ? 'bg-[#E297C1] text-white shadow-xl shadow-pink-100 scale-105' : 'bg-slate-900 text-white shadow-xl shadow-slate-300 scale-105')
-                      : 'text-slate-400 hover:text-slate-600'
-                  }`}
-                >
-                  {s === 'PUBLISHED' ? 'PUBLISH' : s}
-                </button>
-              ))}
+        <div className="flex flex-wrap items-center gap-3 md:gap-4 w-full md:w-auto">
+            {/* Language Switcher */}
+            <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200">
+              <button 
+                type="button" 
+                onClick={() => setActiveLang('id')}
+                className={`px-4 py-2 rounded-xl text-[10px] font-bold transition-all ${activeLang === 'id' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-400'}`}
+              >
+                ID
+              </button>
+              <button 
+                type="button" 
+                onClick={() => setActiveLang('en')}
+                className={`px-4 py-2 rounded-xl text-[10px] font-bold transition-all ${activeLang === 'en' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-400'}`}
+              >
+                EN
+              </button>
             </div>
+
             <button 
-               type="button" 
-               onClick={() => navigate(-1)} 
-               className="p-3 md:p-5 bg-white border border-slate-200 text-slate-300 rounded-[18px] md:rounded-[24px] hover:text-rose-500 transition-all shadow-sm group hover:rotate-90"
+              type="button"
+              onClick={handleAutoTranslateAll}
+              disabled={isTranslating}
+              className="flex items-center gap-2 px-4 py-3 bg-indigo-50 text-indigo-600 rounded-2xl text-[10px] font-black uppercase hover:bg-indigo-100 disabled:opacity-50"
             >
-             <X size={24} />
-           </button>
+              {isTranslating ? <Loader2 size={14} className="animate-spin"/> : <Sparkles size={14}/>}
+              {isTranslating ? 'Translating...' : 'Auto Translate'}
+            </button>
+
+            {/* Container for Status and Close Button */}
+            <div className="flex items-center gap-3 bg-slate-50 p-1.5 rounded-[24px] border border-slate-100">
+              <div className="flex">
+                {['DRAFT', 'PUBLISHED'].map((s) => (
+                  <button
+                    key={s} type="button" onClick={() => setFormData(p => ({...p, status: s}))}
+                    className={`px-6 md:px-10 py-3 rounded-[18px] text-[11px] font-black uppercase tracking-widest transition-all ${
+                      formData.status === s ? 'bg-slate-900 text-white shadow-xl' : 'text-slate-400'
+                    }`}
+                  >
+                    {s === 'PUBLISHED' ? 'PUBLISH' : s}
+                  </button>
+                ))}
+              </div>
+              
+              {/* Tombol X sekarang berada di dalam kontainer yang sama, di samping tombol status */}
+              <button type="button" onClick={() => navigate(-1)} className="p-2 bg-white border border-slate-200 text-slate-400 rounded-full hover:text-rose-500 group transition-all shadow-sm">
+                <X size={20} className="group-hover:rotate-90 transition-transform"/>
+              </button>
+            </div>
         </div>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-12">
-        
-        {/* LEFT COLUMN: CORE INFO */}
-        <div className="lg:col-span-8 space-y-8 md:space-y-10">
-          
-          <div className="bg-white p-6 sm:p-8 md:p-12 rounded-[32px] md:rounded-[48px] shadow-2xl shadow-slate-200/40 border border-slate-50 relative overflow-hidden group">
-            <h3 className="font-black text-slate-900 uppercase italic mb-6 md:mb-10 flex items-center gap-3 md:gap-4 text-lg md:text-xl">
+        <div className="lg:col-span-8 space-y-10">
+          <div className="bg-white p-6 md:p-12 rounded-[48px] shadow-2xl shadow-slate-200/40 border border-slate-50 relative">
+            <div className="absolute top-8 right-8 flex items-center gap-2 text-[10px] font-bold text-indigo-500 bg-indigo-50 px-3 py-1 rounded-full">
+              <Languages size={12}/> Editing: {activeLang.toUpperCase()}
+            </div>
+
+            <h3 className="font-black text-slate-900 uppercase italic mb-10 flex items-center gap-4 text-xl">
               <LayoutGrid size={22} className="text-[#E297C1]" /> Core Configuration
             </h3>
             
-            <div className="space-y-6 md:space-y-8 relative z-10">
+            <div className="space-y-8">
               <div className="group">
-                <label className="text-[10px] md:text-[11px] font-black uppercase text-slate-400 mb-2 md:mb-3 block ml-4 group-focus-within:text-[#E297C1]">Concert Master Title</label>
+                <label className="text-[11px] font-black uppercase text-slate-400 mb-3 block ml-4">Concert Title ({activeLang.toUpperCase()})</label>
                 <input 
-                  type="text" name="title" required value={formData.title} onChange={handleChange} 
-                  placeholder="World Tour: Echoes of Sound" 
-                  className="w-full bg-slate-50 border-2 border-slate-50 rounded-[20px] md:rounded-[24px] py-4 md:py-6 px-6 md:px-10 outline-none focus:border-[#E297C1] focus:bg-white font-bold text-slate-800 transition-all shadow-inner text-base md:text-lg" 
+                  type="text" name="title" required value={formData.title[activeLang]} 
+                  onChange={handleChange} 
+                  placeholder={`Concert Title in ${activeLang === 'id' ? 'Indonesian' : 'English'}`}
+                  className="w-full bg-slate-50 border-2 border-slate-50 rounded-[24px] py-6 px-10 outline-none focus:border-[#E297C1] focus:bg-white font-bold text-slate-800 transition-all text-lg" 
                 />
               </div>
 
-              {/* BAGIAN DESKRIPSI (FIXED SINKRONISASI) */}
               <div className="group">
-                <div className="flex justify-between items-center mb-2 md:mb-3 ml-4">
-                    <label className="text-[10px] md:text-[11px] font-black uppercase text-slate-400 group-focus-within:text-[#E297C1]">Event Narratives (Compound)</label>
-                    <button 
-                        type="button" 
-                        onClick={addDescriptionBlock}
-                        className="text-[9px] font-black bg-slate-100 text-slate-500 px-3 py-1 rounded-full hover:bg-[#E297C1] hover:text-white transition-all flex items-center gap-1"
-                    >
+                <div className="flex justify-between items-center mb-3 ml-4">
+                    <label className="text-[11px] font-black uppercase text-slate-400 italic">Event Narratives ({activeLang.toUpperCase()})</label>
+                    <button type="button" onClick={addDescriptionBlock} className="text-[9px] font-black bg-slate-100 text-slate-500 px-3 py-1 rounded-full hover:bg-[#E297C1] hover:text-white transition-all flex items-center gap-1">
                         <Plus size={12}/> Add Section
                     </button>
                 </div>
                 
                 <div className="space-y-4">
                     {descriptions.map((desc, idx) => (
-                        <div key={idx} className="relative group/editor animate-in slide-in-from-top-2">
-                             <div className="rounded-[24px] md:rounded-[32px] overflow-hidden border-2 border-slate-50 bg-slate-50 focus-within:border-[#E297C1] focus-within:bg-white transition-all shadow-inner">
+                        <div key={idx} className="relative group/editor">
+                             <div className="rounded-[32px] overflow-hidden border-2 border-slate-50 bg-slate-50 focus-within:border-[#E297C1] focus-within:bg-white transition-all shadow-inner">
                                 <ReactQuill 
                                     theme="snow"
-                                    value={desc}
+                                    value={desc[activeLang]}
                                     onChange={(content) => handleDescriptionChange(idx, content)}
                                     modules={quillModules}
                                     formats={quillFormats}
-                                    placeholder={`Section ${idx + 1}: Tell the story...`}
+                                    placeholder={`Section ${idx + 1}: ${activeLang === 'id' ? 'Ceritakan sesuatu...' : 'Tell the story...'}`}
                                     className="bg-transparent"
                                 />
                             </div>
                             {descriptions.length > 1 && (
-                                <button 
-                                    type="button"
-                                    onClick={() => removeDescriptionBlock(idx)}
-                                    className="absolute -right-2 -top-2 p-2 bg-rose-500 text-white rounded-full shadow-lg opacity-0 group-hover/editor:opacity-100 transition-opacity z-20 hover:scale-110"
-                                >
+                                <button type="button" onClick={() => removeDescriptionBlock(idx)} className="absolute -right-2 -top-2 p-2 bg-rose-500 text-white rounded-full shadow-lg opacity-0 group-hover/editor:opacity-100 transition-opacity z-20">
                                     <X size={14}/>
                                 </button>
                             )}
                         </div>
                     ))}
                 </div>
-
-                <style>{`
-                    .ql-container.ql-snow { border: none !important; font-family: inherit; font-size: 1rem; }
-                    .ql-toolbar.ql-snow { border: none !important; border-bottom: 1px solid #f1f5f9 !important; background: #fff; }
-                    .ql-editor { min-height: 120px; padding: 1.5rem 2.5rem; font-weight: 500; color: #334155; line-height: 1.6; }
-                    .ql-editor.ql-blank::before { color: #cbd5e1 !important; font-style: normal; left: 2.5rem; }
-                    .ql-editor strong { font-weight: 800; }
-                `}</style>
               </div>
 
-              {/* Ticket Tiers Section */}
-              <div className="pt-4 md:pt-6">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-                  <label className="text-[10px] md:text-[11px] font-black uppercase text-slate-400 block ml-4 italic">Ticket Inventory & Categories</label>
-                  <button type="button" onClick={addTicketTier} className="flex items-center gap-2 text-[9px] md:text-[10px] font-black bg-[#E297C1] text-white px-4 py-2 rounded-full hover:bg-slate-900 transition-all shadow-lg">
+              <div className="pt-6">
+                <div className="flex justify-between items-center mb-6">
+                  <label className="text-[11px] font-black uppercase text-slate-400 block ml-4 italic">Ticket Inventory</label>
+                  <button type="button" onClick={addTicketTier} className="flex items-center gap-2 text-[10px] font-black bg-[#E297C1] text-white px-4 py-2 rounded-full hover:bg-slate-900 transition-all shadow-lg">
                     <Plus size={14}/> Add Tier
                   </button>
                 </div>
-                
                 <div className="space-y-4">
                   {ticketTiers.map((tier, index) => (
-                    <div key={index} className="flex flex-col md:flex-row gap-4 bg-slate-50 p-4 md:p-6 rounded-[24px] md:rounded-[28px] border border-slate-100 group hover:bg-white hover:shadow-xl transition-all">
+                    <div key={index} className="flex flex-col md:flex-row gap-4 bg-slate-50 p-6 rounded-[28px] border border-slate-100 hover:bg-white hover:shadow-xl transition-all">
                       <div className="flex-1">
-                        <label className="text-[8px] md:text-[9px] font-bold text-slate-400 uppercase mb-1 block ml-2">Tier Name</label>
-                        <input type="text" placeholder="e.g. VIP" required value={tier.name} onChange={(e) => handleTierChange(index, 'name', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 font-bold text-slate-700 outline-none focus:border-[#E297C1] text-sm"/>
+                        <label className="text-[9px] font-bold text-slate-400 uppercase mb-1 block ml-2">Tier Name</label>
+                        <input type="text" placeholder="VIP" required value={tier.name} onChange={(e) => handleTierChange(index, 'name', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 font-bold text-slate-700 outline-none focus:border-[#E297C1] text-sm"/>
                       </div>
-                      <div className="grid grid-cols-2 gap-4 w-full md:w-auto">
+                      <div className="grid grid-cols-2 gap-4">
                         <div className="md:w-40">
-                          <label className="text-[8px] md:text-[9px] font-bold text-slate-400 uppercase mb-1 block ml-2">Price (IDR)</label>
-                          <input type="number" placeholder="0" required value={tier.price} onChange={(e) => handleTierChange(index, 'price', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 font-bold text-slate-700 outline-none focus:border-[#E297C1] text-sm"/>
+                          <label className="text-[9px] font-bold text-slate-400 uppercase mb-1 block ml-2">Price (IDR)</label>
+                          <input type="number" required value={tier.price} onChange={(e) => handleTierChange(index, 'price', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 font-bold text-slate-700 outline-none focus:border-[#E297C1] text-sm"/>
                         </div>
                         <div className="md:w-28">
-                          <label className="text-[8px] md:text-[9px] font-bold text-slate-400 uppercase mb-1 block ml-2">Seats</label>
-                          <input type="number" placeholder="0" required value={tier.quota} onChange={(e) => handleTierChange(index, 'quota', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 font-bold text-slate-700 outline-none focus:border-[#E297C1] text-sm"/>
+                          <label className="text-[9px] font-bold text-slate-400 uppercase mb-1 block ml-2">Seats</label>
+                          <input type="number" required value={tier.quota} onChange={(e) => handleTierChange(index, 'quota', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 font-bold text-slate-700 outline-none focus:border-[#E297C1] text-sm"/>
                         </div>
                       </div>
-                      <div className="flex items-end justify-end md:justify-start pb-1">
-                        <button type="button" onClick={() => removeTicketTier(index)} className={`p-3 rounded-xl transition-all ${ticketTiers.length > 1 ? 'text-rose-400 hover:bg-rose-50' : 'text-slate-200 cursor-not-allowed'}`}>
+                      <div className="flex items-end pb-1">
+                        <button type="button" onClick={() => removeTicketTier(index)} className={`p-3 rounded-xl transition-all ${ticketTiers.length > 1 ? 'text-rose-400 hover:bg-rose-50' : 'text-slate-200'}`}>
                           <Trash2 size={20}/>
                         </button>
                       </div>
@@ -375,39 +498,44 @@ const EditConcert = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8 pt-4 md:pt-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 pt-6">
                 <div className="space-y-3">
-                  <label className="text-[10px] md:text-[11px] font-black uppercase text-slate-400 block ml-4 tracking-widest">Show Date</label>
+                  <label className="text-[11px] font-black uppercase text-slate-400 block ml-4 tracking-widest">Show Date</label>
                   <div className="relative">
                     <Calendar className="absolute left-6 top-1/2 -translate-y-1/2 text-[#E297C1]" size={20} />
-                    <input type="date" name="event_date" required value={formData.event_date} onChange={handleChange} className="w-full bg-slate-50 border-2 border-slate-50 rounded-[20px] md:rounded-[24px] py-4 pl-14 pr-6 font-black outline-none focus:border-[#E297C1] text-slate-700 transition-all uppercase text-xs md:text-sm" />
+                    <input type="date" name="event_date" required value={formData.event_date} onChange={handleChange} className="w-full bg-slate-50 border-2 border-slate-50 rounded-[24px] py-4 pl-14 pr-6 font-black outline-none focus:border-[#E297C1] text-slate-700 transition-all uppercase text-sm" />
                   </div>
                 </div>
                 <div className="space-y-3">
-                  <label className="text-[10px] md:text-[11px] font-black uppercase text-slate-400 block ml-4 tracking-widest">Gate Opens</label>
+                  <label className="text-[11px] font-black uppercase text-slate-400 block ml-4 tracking-widest">Gate Opens</label>
                   <div className="relative">
                     <Clock className="absolute left-6 top-1/2 -translate-y-1/2 text-[#E297C1]" size={20} />
-                    <input type="time" name="start_time" required value={formData.start_time} onChange={handleChange} className="w-full bg-slate-50 border-2 border-slate-50 rounded-[20px] md:rounded-[24px] py-4 pl-14 pr-6 font-black outline-none focus:border-[#E297C1] text-slate-700 transition-all text-xs md:text-sm" />
+                    <input type="time" name="start_time" required value={formData.start_time} onChange={handleChange} className="w-full bg-slate-50 border-2 border-slate-50 rounded-[24px] py-4 pl-14 pr-6 font-black outline-none focus:border-[#E297C1] text-slate-700 transition-all text-sm" />
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Section: Security Protocols */}
-          <div className="bg-slate-900 p-6 sm:p-8 md:p-12 rounded-[32px] md:rounded-[48px] shadow-2xl text-white">
-            <h3 className="font-black text-white uppercase italic mb-6 md:mb-10 flex items-center gap-3 md:gap-4 text-lg md:text-xl">
-              <ShieldCheck size={22} className="text-[#E297C1]" /> Security Protocols
+          <div className="bg-slate-900 p-6 md:p-12 rounded-[48px] shadow-2xl text-white">
+            <h3 className="font-black text-white uppercase italic mb-10 flex items-center gap-4 text-xl">
+              <ShieldCheck size={22} className="text-[#E297C1]" /> Security Protocols ({activeLang.toUpperCase()})
             </h3>
             <div>
-              <div className="flex gap-2 md:gap-3 mb-6">
-                <input type="text" value={inputTerm} onChange={(e) => setInputTerm(e.target.value)} placeholder="Add rule..." className="flex-1 bg-white/5 border-2 border-white/5 rounded-[18px] px-6 py-3 text-xs font-bold outline-none focus:border-[#E297C1] text-white" />
+              <div className="flex gap-3 mb-6">
+                <input 
+                    type="text" 
+                    value={inputTerm[activeLang]} 
+                    onChange={(e) => setInputTerm(prev => ({...prev, [activeLang]: e.target.value}))} 
+                    placeholder={`New rule in ${activeLang === 'id' ? 'Indonesian' : 'English'}...`} 
+                    className="flex-1 bg-white/5 border-2 border-white/5 rounded-[18px] px-6 py-3 text-xs font-bold outline-none focus:border-[#E297C1] text-white" 
+                />
                 <button type="button" onClick={addTerm} className="bg-[#E297C1] text-white px-6 rounded-[18px] hover:scale-105 transition-all"><Plus size={24}/></button>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {termsList.map((t, i) => (
                   <div key={i} className="flex items-center justify-between bg-white/5 p-4 rounded-xl border border-white/5 group">
-                    <p className="text-[9px] md:text-[10px] font-bold text-white/70 uppercase truncate mr-2">{t}</p>
+                    <p className="text-[10px] font-bold text-white/70 uppercase truncate mr-2">{t[activeLang] || t.id}</p>
                     <X size={16} className="shrink-0 cursor-pointer text-white/30 hover:text-rose-500" onClick={() => setTermsList(termsList.filter((_, idx) => idx !== i))}/>
                   </div>
                 ))}
@@ -416,30 +544,64 @@ const EditConcert = () => {
           </div>
         </div>
 
-        {/* RIGHT COLUMN: SIDE INFO */}
-        <div className="lg:col-span-4 space-y-8 md:space-y-10">
-          <div className="bg-white p-6 md:p-8 rounded-[32px] md:rounded-[40px] shadow-2xl shadow-slate-200/40 border border-slate-50">
-            <h3 className="font-black text-slate-900 uppercase italic mb-6 flex items-center gap-3 text-base md:text-lg"><Layers size={22} className="text-[#E297C1]"/> Ecosystem</h3>
+        <div className="lg:col-span-4 space-y-10">
+          <div className="bg-white p-8 rounded-[40px] shadow-2xl shadow-slate-200/40 border border-slate-50">
+            <h3 className="font-black text-slate-900 uppercase italic mb-6 flex items-center gap-3 text-lg"><Layers size={22} className="text-[#E297C1]"/> Ecosystem</h3>
             <div className="space-y-5">
               <div>
-                <label className="text-[10px] md:text-[11px] font-black uppercase text-slate-400 mb-2 block ml-4">Genre / Category</label>
-                <select name="category_id" required value={formData.category_id} onChange={handleChange} className="w-full bg-slate-50 border-2 border-slate-50 rounded-[18px] py-4 px-6 font-black uppercase text-[11px] outline-none focus:border-[#E297C1] text-slate-700 transition-all">
+                <label className="text-[11px] font-black uppercase text-slate-400 mb-2 block ml-4">Genre</label>
+                <select name="category_id" required value={formData.category_id} onChange={handleChange} className="w-full bg-slate-50 border-2 border-slate-50 rounded-[18px] py-4 px-6 font-black uppercase text-[11px] outline-none focus:border-[#E297C1] text-slate-700">
                   <option value="">Choose Genre</option>
                   {categories.map(c => <option key={c.id} value={c.id}>{c.category_name}</option>)}
                 </select>
               </div>
-              <div>
-                <label className="text-[10px] md:text-[11px] font-black uppercase text-slate-400 mb-2 block ml-4">Venue Assignment</label>
-                <select name="location_id" required value={formData.location_id} onChange={handleChange} className="w-full bg-slate-50 border-2 border-slate-50 rounded-[18px] py-4 px-6 font-black uppercase text-[11px] outline-none focus:border-[#E297C1] text-slate-700 transition-all">
-                  <option value="">Choose Venue</option>
-                  {locations.map(l => <option key={l.id} value={l.id}>{l.location_name}</option>)}
-                </select>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="text-[11px] font-black uppercase text-slate-400 mb-2 block ml-4">Venue Assignment</label>
+                  <select name="location_id" required value={formData.location_id} onChange={handleChange} className="w-full bg-slate-50 border-2 border-slate-50 rounded-[18px] py-4 px-6 font-black uppercase text-[11px] outline-none focus:border-[#E297C1] text-slate-700">
+                    <option value="">Choose Venue</option>
+                    {locations.map(l => <option key={l.id} value={l.id}>{l.location_name}</option>)}
+                  </select>
+                </div>
+                
+                <div className="group">
+                  <label className="text-[11px] font-black uppercase text-slate-400 mb-2 block ml-4 group-focus-within:text-[#E297C1]">Address Details</label>
+                  <div className="relative">
+                    <MapPin className="absolute left-4 top-4 text-slate-300" size={16} />
+                    <textarea 
+                      name="address_details" value={formData.address_details} onChange={handleChange}
+                      onBlur={handleAddressSearch}
+                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddressSearch())}
+                      placeholder="e.g. Building A, 3rd Floor..." rows="3"
+                      className="w-full bg-slate-50 border-2 border-slate-50 rounded-[18px] py-4 pl-12 pr-6 font-bold text-[11px] outline-none focus:border-[#E297C1] focus:bg-white text-slate-700 transition-all resize-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center ml-4">
+                    <label className="text-[11px] font-black uppercase text-slate-400 italic">Geospatial Tagging</label>
+                    <div className="flex gap-2 text-[9px] font-black text-[#E297C1]">
+                      <span>LAT: {formData.latitude.toFixed(4)}</span>
+                      <span>LNG: {formData.longitude.toFixed(4)}</span>
+                    </div>
+                  </div>
+                  <div className="h-[250px] w-full rounded-[24px] overflow-hidden border-2 border-slate-100 z-0">
+                    <MapContainer center={[formData.latitude, formData.longitude]} zoom={13} style={{ height: '100%', width: '100%' }}>
+                      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                      <Marker position={[formData.latitude, formData.longitude]} />
+                      <LocationPicker onLocationSelect={handleLocationSelect} />
+                      <RecenterMap lat={formData.latitude} lng={formData.longitude} />
+                    </MapContainer>
+                  </div>
+                </div>
               </div>
 
               <div className="pt-6 border-t border-slate-50">
-                <label className="text-[10px] md:text-[11px] font-black uppercase text-slate-400 mb-3 block ml-4 italic">Lineup</label>
+                <label className="text-[11px] font-black uppercase text-slate-400 mb-3 block ml-4 italic">Lineup</label>
                 <div className="flex gap-2 mb-4">
-                  <input type="text" value={inputCast} onChange={(e) => setInputCast(e.target.value)} placeholder="Artist Name" className="flex-1 bg-slate-50 border-2 border-slate-50 rounded-[14px] px-4 py-3 text-xs font-bold outline-none focus:border-[#E297C1] text-slate-800" />
+                  <input type="text" value={inputCast} onChange={(e) => setInputCast(e.target.value)} placeholder="Artist Name" className="flex-1 bg-slate-50 border-2 border-slate-50 rounded-[14px] px-4 py-3 text-xs font-bold outline-none focus:border-[#E297C1]" />
                   <button type="button" onClick={addCast} className="bg-slate-900 text-white px-5 rounded-[14px] hover:bg-[#E297C1] transition-all"><Plus size={18}/></button>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -453,14 +615,14 @@ const EditConcert = () => {
             </div>
           </div>
 
-          <div className="bg-white p-6 md:p-8 rounded-[32px] md:rounded-[40px] shadow-2xl shadow-slate-200/40 border border-slate-50">
-            <h3 className="font-black text-slate-900 uppercase italic mb-6 flex items-center gap-3 text-base md:text-lg"><ImageIcon size={22} className="text-[#E297C1]"/> Visual Assets</h3>
+          <div className="bg-white p-8 rounded-[40px] shadow-2xl shadow-slate-200/40 border border-slate-50">
+            <h3 className="font-black text-slate-900 uppercase italic mb-6 flex items-center gap-3 text-lg"><ImageIcon size={22} className="text-[#E297C1]"/> Visual Assets</h3>
             <div className="space-y-5">
                 <div className="flex gap-2">
                   <input type="url" value={inputUrl} onChange={(e) => setInputUrl(e.target.value)} placeholder="URL Image" className="flex-1 bg-slate-50 border-2 border-slate-50 rounded-[14px] px-4 py-3 text-xs font-bold outline-none focus:border-[#E297C1]" />
                   <button type="button" onClick={addImageUrl} className="bg-[#E297C1] text-white px-5 rounded-[14px] transition-all"><Plus size={18}/></button>
                 </div>
-                <div className="grid grid-cols-2 gap-3 max-h-[300px] overflow-y-auto pr-1">
+                <div className="grid grid-cols-2 gap-3 max-h-[300px] overflow-y-auto">
                   {imageUrls.map((url, i) => (
                     <div key={i} className="relative aspect-[3/4] rounded-[18px] overflow-hidden group shadow-md">
                       <img src={url} className="w-full h-full object-cover transition-all duration-700 group-hover:scale-125" alt="preview" />
@@ -473,9 +635,10 @@ const EditConcert = () => {
 
           <button 
             type="submit" disabled={isUpdating} 
-            className="w-full bg-slate-900 text-white py-6 rounded-[28px] font-black uppercase tracking-[0.2em] text-xs hover:bg-[#E297C1] transition-all shadow-2xl flex items-center justify-center gap-3 disabled:opacity-50 active:scale-[0.98]"
+            className="w-full bg-slate-900 text-white py-6 rounded-[28px] font-black uppercase tracking-[0.2em] text-xs hover:bg-[#E297C1] transition-all shadow-2xl flex items-center justify-center gap-3 disabled:opacity-50"
           >
-            {isUpdating ? <Loader2 className="animate-spin" size={24} /> : <><ShieldCheck size={20}/> Save Changes</>}
+            {isUpdating ? <Loader2 className="animate-spin" size={20}/> : <ShieldCheck size={20}/>}
+            {isUpdating ? 'Updating...' : 'Submit Record'}
           </button>
         </div>
       </div>

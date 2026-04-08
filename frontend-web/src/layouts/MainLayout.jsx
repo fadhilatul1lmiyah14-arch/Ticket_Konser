@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ShoppingCart, Instagram, Twitter, Facebook, Mail, User, LogOut, Search, X, Menu } from 'lucide-react';
+import { ShoppingCart, Instagram, Twitter, Facebook, Mail, User, LogOut, Search, X, Menu, Globe } from 'lucide-react';
 import logo from '../assets/logo.png'; 
 
 const MainLayout = ({ children }) => {
@@ -13,6 +13,44 @@ const MainLayout = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [navSearch, setNavSearch] = useState("");
   const [hasCartItems, setHasCartItems] = useState(false);
+  
+  // --- LOGIKA MULTI-BAHASA ---
+  const [lang, setLang] = useState(localStorage.getItem('lang') || 'id');
+
+  const toggleLanguage = () => {
+    const newLang = lang === 'id' ? 'en' : 'id';
+    setLang(newLang);
+    localStorage.setItem('lang', newLang);
+    // Emit event agar komponen lain tahu bahasa berubah
+    window.dispatchEvent(new Event('languageChanged'));
+  };
+
+  const t = {
+    id: {
+      home: "Beranda",
+      events: "Acara",
+      search: "Cari Konser...",
+      signin: "Masuk",
+      account: "Akun",
+      dashboard: "Panel Pengguna",
+      logout: "Keluar",
+      footer_desc: "Partner terpercaya Anda untuk mengamankan kursi terbaik di konser favorit. Aman, cepat, dan handal.",
+      explore: "Eksplorasi",
+      follow: "Ikuti Kami"
+    },
+    en: {
+      home: "Home",
+      events: "Events",
+      search: "Search Events...",
+      signin: "Sign In",
+      account: "Account",
+      dashboard: "User Dashboard",
+      logout: "Logout",
+      footer_desc: "Your trusted partner for securing the best seats at your favorite concerts. Secure, fast, and reliable.",
+      explore: "Explore",
+      follow: "Follow Us"
+    }
+  }[lang];
 
   // --- LOGIKA SINKRONISASI USER DATA ---
   const syncUserData = useCallback(() => {
@@ -38,12 +76,10 @@ const MainLayout = ({ children }) => {
 
   // --- LOGIKA UPDATE STATUS CART ---
   const updateCartStatus = useCallback(() => {
-    // Sesuaikan dengan key 'cart' yang digunakan di halaman Cart.jsx
     const cartData = localStorage.getItem('cart');
     if (cartData) {
       try {
         const parsed = JSON.parse(cartData);
-        // Jika parsed adalah array dan memiliki isi, atau object valid
         setHasCartItems(Array.isArray(parsed) ? parsed.length > 0 : !!parsed); 
       } catch (e) {
         setHasCartItems(false);
@@ -61,7 +97,6 @@ const MainLayout = ({ children }) => {
     updateCartStatus();
     setIsMobileMenuOpen(false); 
 
-    // Listeners untuk update reaktif
     window.addEventListener('cartUpdated', updateCartStatus);
     window.addEventListener('storage', () => {
         syncUserData();
@@ -123,7 +158,7 @@ const MainLayout = ({ children }) => {
   };
 
   return (
-    <div className="bg-[#0f172a] min-h-screen font-sans text-white flex flex-col text-left overflow-x-hidden">
+    <div className="bg-[#0f172a] min-h-screen font-sans text-white flex flex-col text-left">
       <nav className="bg-[#0f172a]/95 backdrop-blur-md border-b border-slate-800 px-4 md:px-8 py-4 flex justify-between items-center fixed top-0 left-0 right-0 z-50 h-[73px]">
         
         {/* LEFT: LOGO */}
@@ -142,7 +177,7 @@ const MainLayout = ({ children }) => {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-purple-500 transition-colors" size={18} />
             <input 
               type="text" 
-              placeholder="Search Events..." 
+              placeholder={t.search} 
               value={navSearch}
               onChange={(e) => setNavSearch(e.target.value)}
               className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2 pl-11 pr-10 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none font-bold text-white transition-all"
@@ -158,11 +193,19 @@ const MainLayout = ({ children }) => {
         {/* RIGHT: ACTIONS */}
         <div className="flex items-center gap-3 md:gap-6">
           <div className="hidden md:flex items-center gap-6 text-[11px] font-black uppercase tracking-[0.2em]">
-            <Link to="/" className={`transition ${location.pathname === '/' ? 'text-purple-400' : 'text-white hover:text-purple-400'}`}>Home</Link>
-            <Link to="/events" className={`transition ${location.pathname === '/events' ? 'text-purple-400' : 'text-white hover:text-purple-400'}`}>Events</Link>
+            <Link to="/" className={`transition ${location.pathname === '/' ? 'text-purple-400' : 'text-white hover:text-purple-400'}`}>{t.home}</Link>
+            <Link to="/events" className={`transition ${location.pathname === '/events' ? 'text-purple-400' : 'text-white hover:text-purple-400'}`}>{t.events}</Link>
           </div>
           
-          {/* CART WITH BADGE */}
+          {/* LANGUAGE SWITCHER */}
+          <button 
+            onClick={toggleLanguage}
+            className="flex items-center gap-1.5 bg-slate-800/40 border border-slate-700 px-3 py-1.5 rounded-lg hover:bg-slate-700 transition-all group"
+          >
+            <Globe size={14} className="text-purple-400 group-hover:rotate-12 transition-transform" />
+            <span className="text-[10px] font-black uppercase tracking-widest">{lang}</span>
+          </button>
+
           <Link to="/cart" className="relative text-white group p-2">
             <ShoppingCart size={22} className="cursor-pointer group-hover:text-purple-400 transition" />
             {hasCartItems && (
@@ -186,7 +229,7 @@ const MainLayout = ({ children }) => {
                   />
                 </div>
                 <div className="hidden md:flex flex-col items-start leading-none text-left">
-                  <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Account</span>
+                  <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{t.account}</span>
                   <span className="text-[10px] font-black text-white uppercase tracking-tighter max-w-[80px] truncate">
                     {userData?.name}
                   </span>
@@ -202,10 +245,10 @@ const MainLayout = ({ children }) => {
                       <p className="text-xs font-black text-slate-900 truncate">{userData?.name}</p>
                     </div>
                     <Link to="/dashboard/overview" onClick={() => setShowDropdown(false)} className="flex items-center gap-3 px-5 py-3.5 text-slate-700 hover:bg-purple-50 hover:text-purple-600 transition font-black text-[10px] uppercase tracking-widest">
-                      <User size={16} /> User Dashboard
+                      <User size={16} /> {t.dashboard}
                     </Link>
                     <button onClick={handleLogout} className="w-full flex items-center gap-3 px-5 py-3.5 text-red-500 hover:bg-red-50 transition font-black text-[10px] uppercase tracking-widest border-t border-slate-100">
-                      <LogOut size={16} /> Logout Account
+                      <LogOut size={16} /> {t.logout}
                     </button>
                   </div>
                 </>
@@ -213,7 +256,7 @@ const MainLayout = ({ children }) => {
             </div>
           ) : (
             <Link to="/login" className="hidden md:block bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-2.5 rounded-xl text-white font-black uppercase text-[10px] tracking-widest shadow-lg shadow-purple-500/20">
-              Sign in
+              {t.signin}
             </Link>
           )}
 
@@ -230,7 +273,7 @@ const MainLayout = ({ children }) => {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
             <input 
               type="text" 
-              placeholder="Search Events..." 
+              placeholder={t.search} 
               value={navSearch}
               onChange={(e) => setNavSearch(e.target.value)}
               className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-12 pr-4 text-sm font-bold outline-none text-white"
@@ -238,10 +281,10 @@ const MainLayout = ({ children }) => {
           </form>
 
           <div className="flex flex-col gap-6 text-xl font-black uppercase tracking-[0.1em]">
-            <Link to="/" className={`${location.pathname === '/' ? 'text-purple-400' : 'text-white'}`}>Home</Link>
-            <Link to="/events" className={`${location.pathname === '/events' ? 'text-purple-400' : 'text-white'}`}>Events</Link>
+            <Link to="/" className={`${location.pathname === '/' ? 'text-purple-400' : 'text-white'}`}>{t.home}</Link>
+            <Link to="/events" className={`${location.pathname === '/events' ? 'text-purple-400' : 'text-white'}`}>{t.events}</Link>
             {!isLoggedIn && (
-               <Link to="/login" className="text-purple-500 pt-4 border-t border-slate-800">Sign in</Link>
+               <Link to="/login" className="text-purple-500 pt-4 border-t border-slate-800">{t.signin}</Link>
             )}
           </div>
         </div>
@@ -252,45 +295,45 @@ const MainLayout = ({ children }) => {
       </main>
 
       {/* --- FOOTER --- */}
-      <footer className="w-full bg-white border-t border-slate-200 pt-16 pb-8 mt-20 font-sans text-slate-900">
+      <footer className="w-full bg-[#0f172a] border-t border-slate-800 pt-16 pb-8 mt-20 font-sans text-white text-left">
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-12 mb-12">
             <div className="col-span-1">
               <div className="flex items-center gap-3 mb-4">
                 <img src={logo} alt="Raly Ticket Logo" className="h-8 w-auto object-contain" />
-                <span className="font-black uppercase tracking-tighter text-slate-900 text-lg md:text-xl">
+                <span className="font-black uppercase tracking-tighter text-white text-lg md:text-xl italic">
                   Raly Ticket
                 </span>
               </div>
-              <p className="text-slate-500 text-sm leading-relaxed font-medium">
-                Your trusted partner for securing the best seats at your favorite concerts. Secure, fast, and reliable.
+              <p className="text-slate-400 text-sm leading-relaxed font-medium">
+                {t.footer_desc}
               </p>
             </div>
 
             <div>
-              <h4 className="font-black uppercase tracking-widest text-xs text-slate-900 mb-6">Explore</h4>
-              <ul className="space-y-4 text-sm font-bold text-slate-500">
-                <li onClick={() => navigate('/')} className="hover:text-purple-600 cursor-pointer transition-colors">Home</li>
-                <li onClick={() => navigate('/events')} className="hover:text-purple-600 cursor-pointer transition-colors">Events</li>
+              <h4 className="font-black uppercase tracking-widest text-xs text-purple-400 mb-6">{t.explore}</h4>
+              <ul className="space-y-4 text-sm font-bold text-slate-300">
+                <li onClick={() => navigate('/')} className="hover:text-purple-400 cursor-pointer transition-colors">{t.home}</li>
+                <li onClick={() => navigate('/events')} className="hover:text-purple-400 cursor-pointer transition-colors">{t.events}</li>
               </ul>
             </div>
 
             <div>
-              <h4 className="font-black uppercase tracking-widest text-xs text-slate-900 mb-6">Support</h4>
-              <ul className="space-y-4 text-sm font-bold text-slate-500">
+              <h4 className="font-black uppercase tracking-widest text-xs text-purple-400 mb-6">Support</h4>
+              <ul className="space-y-4 text-sm font-bold text-slate-300">
                 <li className="flex items-center gap-2 break-all md:break-normal">
-                  <Mail size={16} className="min-w-fit" /> help@ralyticket.com
+                  <Mail size={16} className="min-w-fit text-purple-500" /> help@ralyticket.com
                 </li>
-                <li className="hover:text-purple-600 cursor-pointer transition-colors">Terms of Service</li>
-                <li className="hover:text-purple-600 cursor-pointer transition-colors">Privacy Policy</li>
+                <li className="hover:text-purple-400 cursor-pointer transition-colors">Terms of Service</li>
+                <li className="hover:text-purple-400 cursor-pointer transition-colors">Privacy Policy</li>
               </ul>
             </div>
 
             <div>
-              <h4 className="font-black uppercase tracking-widest text-xs text-slate-900 mb-6">Follow Us</h4>
+              <h4 className="font-black uppercase tracking-widest text-xs text-purple-400 mb-6">{t.follow}</h4>
               <div className="flex gap-4">
                 {[Instagram, Twitter, Facebook].map((Icon, index) => (
-                  <div key={index} className="w-10 h-10 rounded-full border-2 border-slate-200 flex items-center justify-center text-slate-400 hover:border-purple-600 hover:text-purple-600 cursor-pointer transition-all">
+                  <div key={index} className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center text-slate-400 hover:border-purple-500 hover:text-purple-500 hover:-translate-y-1 cursor-pointer transition-all">
                     <Icon size={20} />
                   </div>
                 ))}
@@ -298,13 +341,13 @@ const MainLayout = ({ children }) => {
             </div>
           </div>
 
-          <div className="border-t border-slate-100 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-slate-400 text-center md:text-left">
+          <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-slate-500 text-center md:text-left">
             <p className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em]">
               © 2026 RALY TICKET. ALL RIGHTS RESERVED.
             </p>
             <div className="flex gap-6">
-              <span className="text-[10px] font-black uppercase tracking-widest cursor-pointer hover:text-slate-900">Terms</span>
-              <span className="text-[10px] font-black uppercase tracking-widest cursor-pointer hover:text-slate-900">Privacy</span>
+              <span className="text-[10px] font-black uppercase tracking-widest cursor-pointer hover:text-white transition-colors">Terms</span>
+              <span className="text-[10px] font-black uppercase tracking-widest cursor-pointer hover:text-white transition-colors">Privacy</span>
             </div>
           </div>
         </div>

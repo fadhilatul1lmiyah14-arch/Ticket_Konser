@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axiosConfig'; 
 
@@ -6,16 +6,62 @@ import api from '../../api/axiosConfig';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css'; 
 
+// --- LEAFLET SETUP FOR MAP ---
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
 import { 
   X, MapPin, Calendar, 
   DollarSign, Clock, FileText, Loader2, 
   Music, Plus, Trash2, Tag, Info, Image as ImageIcon,
-  ShieldCheck, LayoutGrid, Layers, Ticket, AlignLeft
+  ShieldCheck, LayoutGrid, Layers, Ticket, AlignLeft, Map as MapIcon, Search, ChevronRight, Languages
 } from 'lucide-react';
+
+// Fix Leaflet Icon Issue
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
+
+// Map Components
+const LocationPicker = ({ setAddressDetails, setSelectedLocation }) => {
+  useMapEvents({
+    click: async (e) => {
+      const { lat, lng } = e.latlng;
+      setSelectedLocation([lat, lng]);
+      try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`);
+        const data = await response.json();
+        if (data && data.display_name) {
+          setAddressDetails(data.display_name);
+        }
+      } catch (err) {
+        console.error("Gagal reverse geocoding");
+      }
+    },
+  });
+  return null;
+};
+
+const RecenterMap = ({ position }) => {
+  const map = useMap();
+  useEffect(() => { 
+    if (position) {
+      map.flyTo(position, 15, { animate: true, duration: 1.5 });
+    } 
+  }, [position, map]);
+  return null;
+};
 
 const AddConcert = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [activeLang, setActiveLang] = useState('id'); // 'id' or 'en'
+  
   const [categories, setCategories] = useState([]);
   const [locations, setLocations] = useState([]);
   
@@ -24,26 +70,34 @@ const AddConcert = () => {
   const [casts, setCasts] = useState([]);
   const [inputCast, setInputCast] = useState("");
   
-  const [termsList, setTermsList] = useState([]);
+  // State for Multi-language support
+  const [termsList, setTermsList] = useState({ id: [], en: [] });
   const [inputTerm, setInputTerm] = useState("");
 
   const [ticketTiers, setTicketTiers] = useState([
     { name: 'REGULAR', price: '', quota: '' }
   ]);
 
-  // PERBAIKAN: description diubah menjadi Array
-  const [descriptions, setDescriptions] = useState(['']);
+  const [descriptions, setDescriptions] = useState({
+    id: [''],
+    en: ['']
+  });
+
+  // Map & Search States
+  const [selectedLocation, setSelectedLocation] = useState(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const searchTimeoutRef = useRef(null);
 
   const [formData, setFormData] = useState({
-    title: '',
+    title: { id: '', en: '' },
     event_date: '',
     start_time: '',
     category_id: '',
     location_id: '',
+    address_details: '', 
     status: 'DRAFT'
   });
 
-  // Konfigurasi Toolbar
   const quillModules = {
     toolbar: [
       [{ 'header': [1, 2, 3, false] }],
@@ -79,24 +133,106 @@ const AddConcert = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    if (name === 'title') {
+      setFormData(prev => ({
+        ...prev,
+        title: { ...prev.title, [activeLang]: value }
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
+
+    if (name === 'address_details') {
+      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+      searchTimeoutRef.current = setTimeout(() => {
+        handleSearchLocation(value);
+      }, 1200);
+    }
   };
 
-  // FUNGSI BARU: Mengelola Array Deskripsi
+  const handleSearchLocation = async (query) => {
+    if (!query || query.length < 5) return;
+    setIsSearching(true);
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+      const results = await response.json();
+      if (results && results.length > 0) {
+        const { lat, lon } = results[0];
+        setSelectedLocation([parseFloat(lat), parseFloat(lon)]);
+      }
+    } catch (err) {
+      console.error("Geocoding error:", err);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // --- TRANSLATION ENGINE ---
+  const handleAutoTranslate = async () => {
+    if (!formData.title.id && descriptions.id[0] === '') {
+      alert("Isi konten Bahasa Indonesia terlebih dahulu!");
+      return;
+    }
+
+    setIsTranslating(true);
+    try {
+      const translateText = async (text) => {
+        if (!text || text === "<p><br></p>") return text;
+        const cleanText = text.replace(/<\/?[^>]+(>|$)/g, ""); 
+        const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=id&tl=en&dt=t&q=${encodeURIComponent(cleanText)}`);
+        const data = await res.json();
+        return data[0].map(item => item[0]).join("");
+      };
+
+      // Translate Title
+      const transTitle = await translateText(formData.title.id);
+      
+      // Translate Descriptions
+      const transDescs = await Promise.all(
+        descriptions.id.map(async (d) => await translateText(d))
+      );
+
+      // Translate Terms
+      const transTerms = await Promise.all(
+        termsList.id.map(async (t) => await translateText(t))
+      );
+
+      setFormData(prev => ({ ...prev, title: { ...prev.title, en: transTitle } }));
+      setDescriptions(prev => ({ ...prev, en: transDescs }));
+      setTermsList(prev => ({ ...prev, en: transTerms }));
+
+      setActiveLang('en');
+    } catch (error) {
+      console.error("Translation Error:", error);
+      alert("Gagal menerjemahkan otomatis.");
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
   const addDescriptionBlock = () => {
-    setDescriptions([...descriptions, '']);
+    setDescriptions(prev => ({
+      id: [...prev.id, ''],
+      en: [...prev.en, '']
+    }));
   };
 
   const removeDescriptionBlock = (index) => {
-    if (descriptions.length > 1) {
-      setDescriptions(descriptions.filter((_, i) => i !== index));
+    if (descriptions.id.length > 1) {
+      setDescriptions(prev => ({
+        id: prev.id.filter((_, i) => i !== index),
+        en: prev.en.filter((_, i) => i !== index)
+      }));
     }
   };
 
   const handleDescriptionChange = (index, content) => {
-    const newDescs = [...descriptions];
-    newDescs[index] = content;
-    setDescriptions(newDescs);
+    setDescriptions(prev => {
+        const newArray = [...prev[activeLang]];
+        newArray[index] = content;
+        return { ...prev, [activeLang]: newArray };
+    });
   };
 
   const addTicketTier = () => {
@@ -130,8 +266,11 @@ const AddConcert = () => {
   };
 
   const addTerm = () => {
-    if (inputTerm.trim() !== "" && !termsList.includes(inputTerm)) {
-      setTermsList(prev => [...prev, inputTerm]);
+    if (inputTerm.trim() !== "") {
+      setTermsList(prev => ({
+        ...prev,
+        [activeLang]: [...prev[activeLang], inputTerm]
+      }));
       setInputTerm("");
     }
   };
@@ -146,12 +285,18 @@ const AddConcert = () => {
     setLoading(true);
     try {
       const payload = {
-        title: formData.title,
+        title: formData.title, // Object {id, en}
         category_id: Number(formData.category_id),
         location_id: Number(formData.location_id),
-        // PERBAIKAN: Kirim sebagai JSON string agar backend bisa menyimpan array
-        description: JSON.stringify(descriptions.filter(d => d.trim() !== "")),
-        terms_conditions: termsList.join('\n'), 
+        address_details: formData.address_details,
+        description: {
+            id: descriptions.id.filter(d => d.trim() !== "" && d !== "<p><br></p>"),
+            en: descriptions.en.filter(d => d.trim() !== "" && d !== "<p><br></p>")
+        },
+        terms_conditions: {
+            id: termsList.id.join('\n'),
+            en: termsList.en.join('\n')
+        }, 
         event_date: formData.event_date,
         start_time: formData.start_time,
         status: formData.status, 
@@ -160,7 +305,7 @@ const AddConcert = () => {
         ticket_types: ticketTiers.map(t => ({
           name: t.name,
           price: Number(t.price),
-          quota: Number(t.quota)
+          quota: Number(t.quota) 
         }))
       };
 
@@ -168,8 +313,15 @@ const AddConcert = () => {
       alert("✅ Event & Tiket Berhasil Disimpan!");
       navigate('/admin/manage-concert'); 
     } catch (error) {
-      console.error("ERROR POST EVENT:", error.response?.data);
-      alert("Gagal: " + (error.response?.data?.message || "Terjadi kesalahan server"));
+      if (error.response && error.response.status === 422) {
+        const errorData = error.response.data.errors;
+        const errorMessage = typeof errorData === 'object' 
+          ? Object.values(errorData).flat()[0] 
+          : "Data tidak valid";
+        alert(`Gagal Validasi: ${errorMessage}`);
+      } else {
+        alert("Gagal: " + (error.response?.data?.message || "Terjadi kesalahan koneksi/server"));
+      }
     } finally {
       setLoading(false);
     }
@@ -182,7 +334,7 @@ const AddConcert = () => {
       <header className="mb-8 md:mb-12 flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-100 pb-8 md:pb-10 gap-6 md:gap-8">
         <div className="space-y-1 w-full md:w-auto">
           <div className="flex items-center gap-3 mb-2">
-            <span className="p-2 bg-slate-900 rounded-xl text-white shadow-xl shadow-slate-200 rotate-3 group-hover:rotate-0 transition-transform">
+            <span className="p-2 bg-slate-900 rounded-xl text-white shadow-xl shadow-slate-200 rotate-3 transition-transform">
               <Music size={18}/>
             </span>
             <h2 className="text-[9px] md:text-[11px] font-black text-[#E297C1] uppercase tracking-[0.3em] md:tracking-[0.5em]">Creative Studio</h2>
@@ -192,7 +344,23 @@ const AddConcert = () => {
           </h1>
         </div>
         
-        <div className="flex items-center gap-3 md:gap-4 w-full md:w-auto">
+        <div className="flex flex-wrap items-center gap-3 md:gap-4 w-full md:w-auto">
+            {/* Language Switcher & Auto-Translate */}
+            <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200 shadow-inner">
+                <button type="button" onClick={() => setActiveLang('id')} className={`px-4 py-2 rounded-xl text-[10px] font-black transition-all ${activeLang === 'id' ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}>ID</button>
+                <button type="button" onClick={() => setActiveLang('en')} className={`px-4 py-2 rounded-xl text-[10px] font-black transition-all ${activeLang === 'en' ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}>EN</button>
+                <div className="w-[1px] bg-slate-200 mx-1 my-1"></div>
+                <button 
+                    type="button" 
+                    onClick={handleAutoTranslate} 
+                    disabled={isTranslating}
+                    className="px-4 py-2 text-[10px] font-black text-emerald-600 flex items-center gap-1 hover:bg-emerald-50 rounded-xl transition-all disabled:opacity-50"
+                >
+                    {isTranslating ? <Loader2 size={12} className="animate-spin" /> : <Languages size={12} />} 
+                    AUTO-EN
+                </button>
+            </div>
+
             <div className="flex flex-1 md:flex-none bg-slate-50 p-1.5 md:p-2 rounded-[20px] md:rounded-[24px] border border-slate-100 shadow-inner">
               {['DRAFT', 'PUBLISHED'].map((s) => (
                 <button
@@ -212,7 +380,7 @@ const AddConcert = () => {
             <button 
                type="button" 
                onClick={() => navigate(-1)} 
-               className="p-3 md:p-5 bg-white border border-slate-200 text-slate-300 rounded-[18px] md:rounded-[24px] hover:text-rose-500 hover:border-rose-100 hover:bg-rose-50 transition-all shadow-sm group hover:rotate-90"
+               className="p-3 md:p-5 bg-white border border-slate-200 text-slate-300 rounded-[18px] md:rounded-[24px] hover:text-rose-500 transition-all shadow-sm group hover:rotate-90"
             >
              <X size={24} className="md:w-7 md:h-7" />
            </button>
@@ -221,7 +389,7 @@ const AddConcert = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-12">
         
-        {/* LEFT COLUMN: CORE INFO (8 Cols) */}
+        {/* LEFT COLUMN */}
         <div className="lg:col-span-8 space-y-8 md:space-y-10">
           
           <div className="bg-white p-6 sm:p-8 md:p-12 rounded-[32px] md:rounded-[48px] shadow-2xl shadow-slate-200/40 border border-slate-50 relative overflow-hidden group">
@@ -230,23 +398,23 @@ const AddConcert = () => {
             </div>
 
             <h3 className="font-black text-slate-900 uppercase italic mb-6 md:mb-10 flex items-center gap-3 md:gap-4 text-lg md:text-xl">
-              <LayoutGrid size={22} className="text-[#E297C1]" /> Core Configuration
+              <LayoutGrid size={22} className="text-[#E297C1]" /> Core Configuration ({activeLang.toUpperCase()})
             </h3>
             
             <div className="space-y-6 md:space-y-8 relative z-10">
               <div className="group">
                 <label className="text-[10px] md:text-[11px] font-black uppercase text-slate-400 mb-2 md:mb-3 block ml-4 group-focus-within:text-[#E297C1] transition-colors">Concert Master Title</label>
                 <input 
-                  type="text" name="title" required value={formData.title} onChange={handleChange} 
-                  placeholder="World Tour: Echoes of Sound" 
+                  type="text" name="title" required value={formData.title[activeLang]} onChange={handleChange} 
+                  placeholder={activeLang === 'id' ? "Judul Konser..." : "Concert Title..."} 
                   className="w-full bg-slate-50 border-2 border-slate-50 rounded-[20px] md:rounded-[24px] py-4 md:py-6 px-6 md:px-10 outline-none focus:border-[#E297C1] focus:bg-white font-bold text-slate-800 transition-all shadow-inner text-base md:text-lg placeholder:text-slate-200" 
                 />
               </div>
 
-              {/* PERBAIKAN: EDITOR DESKRIPSI (Dapat ditambah lebih dari satu) */}
+              {/* EDITOR DESKRIPSI */}
               <div className="group">
                 <div className="flex justify-between items-center mb-2 md:mb-3 ml-4">
-                    <label className="text-[10px] md:text-[11px] font-black uppercase text-slate-400 group-focus-within:text-[#E297C1]">Event Narratives (Compound)</label>
+                    <label className="text-[10px] md:text-[11px] font-black uppercase text-slate-400 group-focus-within:text-[#E297C1]">Event Narratives ({activeLang.toUpperCase()})</label>
                     <button 
                         type="button" 
                         onClick={addDescriptionBlock}
@@ -257,7 +425,7 @@ const AddConcert = () => {
                 </div>
                 
                 <div className="space-y-4">
-                    {descriptions.map((desc, idx) => (
+                    {descriptions[activeLang].map((desc, idx) => (
                         <div key={idx} className="relative group/editor animate-in slide-in-from-top-2">
                              <div className="rounded-[24px] md:rounded-[32px] overflow-hidden border-2 border-slate-50 bg-slate-50 focus-within:border-[#E297C1] focus-within:bg-white transition-all shadow-inner">
                                 <ReactQuill 
@@ -266,11 +434,11 @@ const AddConcert = () => {
                                     onChange={(content) => handleDescriptionChange(idx, content)}
                                     modules={quillModules}
                                     formats={quillFormats}
-                                    placeholder={`Section ${idx + 1}: Tell the story...`}
+                                    placeholder={activeLang === 'id' ? `Bagian ${idx + 1}: Ceritakan keseruannya...` : `Section ${idx + 1}: Tell the story...`}
                                     className="bg-transparent"
                                 />
                             </div>
-                            {descriptions.length > 1 && (
+                            {descriptions.id.length > 1 && (
                                 <button 
                                     type="button"
                                     onClick={() => removeDescriptionBlock(idx)}
@@ -292,7 +460,7 @@ const AddConcert = () => {
                 `}</style>
               </div>
 
-              {/* Ticket Tiers Section */}
+              {/* Ticket Tiers */}
               <div className="pt-4 md:pt-6">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                   <label className="text-[10px] md:text-[11px] font-black uppercase text-slate-400 block ml-4 italic">Ticket Inventory & Categories</label>
@@ -375,27 +543,27 @@ const AddConcert = () => {
           {/* Section: Terms Protocol */}
           <div className="bg-slate-900 p-6 sm:p-8 md:p-12 rounded-[32px] md:rounded-[48px] shadow-2xl shadow-slate-300 text-white relative overflow-hidden">
             <h3 className="font-black text-white uppercase italic mb-6 md:mb-10 flex items-center gap-3 md:gap-4 text-lg md:text-xl relative z-10">
-              <ShieldCheck size={22} className="text-[#E297C1]" /> Security Protocols
+              <ShieldCheck size={22} className="text-[#E297C1]" /> Security Protocols ({activeLang.toUpperCase()})
             </h3>
             <div className="relative z-10">
               <div className="flex gap-2 md:gap-3 mb-6">
                 <input 
                   type="text" value={inputTerm} onChange={(e) => setInputTerm(e.target.value)} 
-                  placeholder="Add rule..." 
+                  placeholder={activeLang === 'id' ? "Aturan baru..." : "Add rule..."} 
                   className="flex-1 bg-white/5 border-2 border-white/5 rounded-[18px] md:rounded-[22px] px-6 md:px-8 py-3 md:py-5 text-xs md:text-sm font-bold outline-none focus:border-[#E297C1] text-white" 
                 />
                 <button 
                   type="button" onClick={addTerm} 
-                  className="bg-[#E297C1] text-white px-6 md:px-8 rounded-[18px] md:rounded-[22px] hover:scale-105 transition-all shadow-lg active:scale-95"
+                  className="bg-[#E297C1] text-white px-6 md:px-8 rounded-[18px] md:rounded-[22px] hover:scale-105 transition-all shadow-lg"
                 >
                   <Plus size={24}/>
                 </button>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {termsList.map((t, i) => (
-                  <div key={i} className="flex items-center justify-between bg-white/5 p-4 rounded-xl md:rounded-2xl border border-white/5 group">
+                {termsList[activeLang].map((t, i) => (
+                  <div key={i} className="flex items-center justify-between bg-white/5 p-4 rounded-xl md:rounded-2xl border border-white/5 group animate-in zoom-in">
                     <p className="text-[9px] md:text-[10px] font-bold text-white/70 uppercase truncate mr-2">{t}</p>
-                    <X size={16} className="shrink-0 cursor-pointer text-white/30 hover:text-rose-500" onClick={() => setTermsList(termsList.filter((_, idx) => idx !== i))}/>
+                    <X size={16} className="shrink-0 cursor-pointer text-white/30 hover:text-rose-500" onClick={() => setTermsList(prev => ({...prev, [activeLang]: prev[activeLang].filter((_, idx) => idx !== i)}))}/>
                   </div>
                 ))}
               </div>
@@ -403,7 +571,7 @@ const AddConcert = () => {
           </div>
         </div>
 
-        {/* RIGHT COLUMN: SIDE INFO (4 Cols) */}
+        {/* RIGHT COLUMN */}
         <div className="lg:col-span-4 space-y-8 md:space-y-10">
           
           <div className="bg-white p-6 md:p-8 rounded-[32px] md:rounded-[40px] shadow-2xl shadow-slate-200/40 border border-slate-50">
@@ -420,14 +588,51 @@ const AddConcert = () => {
                 </select>
               </div>
               <div>
-                <label className="text-[10px] md:text-[11px] font-black uppercase text-slate-400 mb-2 md:mb-3 block ml-4">Venue Assignment</label>
+                <label className="text-[10px] md:text-[11px] font-black uppercase text-slate-400 mb-2 md:mb-3 block ml-4">Venue Assignment (City)</label>
                 <select 
                   name="location_id" required value={formData.location_id} onChange={handleChange} 
-                  className="w-full bg-slate-50 border-2 border-slate-50 rounded-[18px] md:rounded-[22px] py-4 md:py-5 px-6 md:px-8 font-black uppercase text-[11px] md:text-[12px] outline-none focus:border-[#E297C1] focus:bg-white text-slate-700 transition-all appearance-none"
+                  className="w-full bg-slate-50 border-2 border-slate-50 rounded-[18px] md:rounded-[22px] py-4 md:py-5 px-6 md:px-8 font-black uppercase text-[11px] md:text-[12px] outline-none focus:border-[#E297C1] focus:bg-white text-slate-700 transition-all appearance-none mb-4"
                 >
-                  <option value="">Choose Venue</option>
+                  <option value="">Choose City/Venue</option>
                   {locations.map(l => <option key={l.id} value={l.id}>{l.location_name}</option>)}
                 </select>
+
+                <label className="text-[10px] md:text-[11px] font-black uppercase text-slate-400 mb-2 md:mb-3 block ml-4 italic">Specific Venue Address Details</label>
+                <div className="relative group mb-4">
+                  <div className="absolute left-5 top-5 z-10">
+                    {isSearching ? <Loader2 size={18} className="animate-spin text-[#E297C1]" /> : <Search size={18} className="text-[#E297C1]" />}
+                  </div>
+                  <textarea 
+                    name="address_details" 
+                    value={formData.address_details} 
+                    onChange={handleChange} 
+                    required
+                    placeholder="Search or type specific address..."
+                    className="w-full bg-slate-50 border-2 border-slate-50 rounded-[18px] md:rounded-[22px] py-4 pl-12 pr-6 font-bold text-slate-700 outline-none focus:border-[#E297C1] focus:bg-white transition-all text-xs min-h-[100px] shadow-inner"
+                  ></textarea>
+                </div>
+
+                {/* --- ADDRESS MAP PICKER --- */}
+                <div className="space-y-3 animate-in zoom-in duration-500 mt-2">
+                  <div className="flex justify-between items-center px-1">
+                    <label className="text-[9px] font-black text-[#E297C1] uppercase tracking-widest flex items-center gap-2">
+                      <MapIcon size={12}/> Map Geolocation
+                    </label>
+                    {selectedLocation && <span className="text-[8px] font-black text-emerald-500 uppercase tracking-tighter bg-emerald-50 px-2 py-0.5 rounded-md">Marker Set</span>}
+                  </div>
+                  <div className="w-full rounded-[20px] md:rounded-[24px] overflow-hidden border-2 border-slate-100 h-[200px] shadow-sm relative z-0">
+                    <MapContainer center={[-6.2088, 106.8456]} zoom={13} style={{ height: '100%', width: '100%' }}>
+                      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                      <LocationPicker 
+                        setAddressDetails={(val) => setFormData(p => ({...p, address_details: val}))} 
+                        setSelectedLocation={setSelectedLocation} 
+                      />
+                      {selectedLocation && <Marker position={selectedLocation} />}
+                      <RecenterMap position={selectedLocation} />
+                    </MapContainer>
+                  </div>
+                  <p className="text-[8px] text-slate-400 italic px-2">*Click map to pinpoint exact location</p>
+                </div>
               </div>
 
               <div className="pt-6 md:pt-8 border-t border-slate-50">

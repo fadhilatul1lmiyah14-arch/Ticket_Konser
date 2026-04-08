@@ -11,7 +11,7 @@ import Success from './website/Success';
 import Login from './website/Login';
 import Register from './website/Register';
 
-// --- HALAMAN DASHBOARD (STRUKTUR MODULAR) ---
+// --- HALAMAN DASHBOARD ---
 import UserDashboard from './dashboard/UserDashboard'; 
 import ProfileSection from './dashboard/ProfileSection'; 
 import OrderSection from './dashboard/OrderSection';     
@@ -33,10 +33,10 @@ const ScrollToTop = () => {
  * Komponen pembungkus untuk memproteksi halaman yang butuh login.
  */
 const ProtectedRoute = ({ children }) => {
-  const token = localStorage.getItem('userToken') || localStorage.getItem('token');
+  // Pastikan kunci token konsisten dengan yang kamu simpan saat login
+  const token = localStorage.getItem('token') || localStorage.getItem('userToken');
   
   if (!token) {
-    // Jika tidak ada token, arahkan ke login
     return <Navigate to="/login" replace />;
   }
 
@@ -49,15 +49,15 @@ function App() {
       <ScrollToTop />
       <Routes>
         {/* --- PUBLIC ROUTES --- */}
+        {/* Pastikan LandingPage adalah komponen yang berisi Banner, List Konser, dll */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/events" element={<Events />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        
-        {/* SESUAIKAN DENGAN NAVIGASI DI HOME: /event/:id */}
         <Route path="/event/:id" element={<ConcertDetail />} />
         
         {/* --- PAYMENT SUCCESS ROUTES --- */}
+        {/* Kita pakai satu path saja agar konsisten */}
         <Route 
           path="/payment-success" 
           element={
@@ -66,18 +66,8 @@ function App() {
             </ProtectedRoute>
           } 
         />
-        <Route 
-          path="/success" 
-          element={
-            <ProtectedRoute>
-              <Success />
-            </ProtectedRoute>
-          } 
-        />
 
-        {/* --- PROTECTED ROUTES (Halaman Wajib Login) --- */}
-        
-        {/* Transaksi & Keranjang */}
+        {/* --- PROTECTED ROUTES --- */}
         <Route 
           path="/cart" 
           element={
@@ -95,7 +85,7 @@ function App() {
           } 
         />
 
-        {/* --- AREA DASHBOARD USER (NESTED ROUTES) --- */}
+        {/* --- AREA DASHBOARD USER --- */}
         <Route 
           path="/dashboard" 
           element={
@@ -104,10 +94,7 @@ function App() {
             </ProtectedRoute>
           }
         >
-          {/* Default Redirect: Saat akses /dashboard langsung ke /dashboard/overview */}
           <Route index element={<Navigate to="overview" replace />} />
-          
-          {/* Sub-halaman dashboard */}
           <Route path="overview" element={<DashboardOverview />} />
           <Route path="profile" element={<ProfileSection />} />
           <Route path="orders" element={<OrderSection />} />
