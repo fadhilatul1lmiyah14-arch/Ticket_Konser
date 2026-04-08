@@ -289,7 +289,7 @@ const Home = () => {
   </div>
 
   {/* CSS ANIMATIONS */}
-  <style jsx>{`
+  <style >{`
     @keyframes mesh-1 { 0%, 100% { transform: translate(0,0); } 50% { transform: translate(10%, 10%); } }
     @keyframes mesh-2 { 0%, 100% { transform: translate(0,0); } 50% { transform: translate(-15%, -5%); } }
     @keyframes mesh-3 { 0%, 100% { transform: translate(0,0); } 50% { transform: translate(5%, -15%); } }

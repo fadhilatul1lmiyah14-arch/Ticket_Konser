@@ -51,6 +51,22 @@ const Dashboard = () => {
     fetchDashboardData();
   }, [period]);
 
+  // Fungsi pembantu untuk merender Nama Event dari JSON Object
+  const renderEventName = (nameData) => {
+    if (typeof nameData === 'string') {
+      try {
+        const parsed = JSON.parse(nameData);
+        return parsed.id || parsed.en || nameData;
+      } catch (e) {
+        return nameData;
+      }
+    }
+    if (typeof nameData === 'object' && nameData !== null) {
+      return nameData.id || nameData.en || "Unnamed Event";
+    }
+    return "Unnamed Event";
+  };
+
   return (
     <div className="bg-white min-h-screen p-4 sm:p-6 lg:p-0">
       {/* Header */}
@@ -160,7 +176,7 @@ const Dashboard = () => {
                   <td className="px-6 md:px-8 py-5 md:py-6">
                     <div className="flex flex-col">
                       <span className="font-bold text-xs md:text-sm text-slate-800 group-hover:text-[#E297C1] transition duration-300 line-clamp-1">
-                        {item.event_name}
+                        {renderEventName(item.event_name)}
                       </span>
                       <span className="text-[8px] md:text-[9px] text-slate-300 font-black uppercase tracking-tighter">ID: {item.event_id}</span>
                     </div>
@@ -191,7 +207,7 @@ const Dashboard = () => {
                 <tr>
                   <td colSpan="4" className="px-8 py-20 md:py-24 text-center">
                     <div className="flex flex-col items-center gap-4 opacity-20">
-                      <Music size={40} md:size={48} />
+                      <Music size={40} />
                       <p className="uppercase text-[9px] md:text-[10px] font-black tracking-[0.3em]">No performance data available</p>
                     </div>
                   </td>

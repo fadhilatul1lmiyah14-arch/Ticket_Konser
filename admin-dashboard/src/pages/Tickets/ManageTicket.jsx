@@ -44,6 +44,27 @@ const ManageTicket = () => {
     fetchTickets();
   }, []);
 
+  // Helper function to handle JSON names
+  const renderEventTitle = (titleData) => {
+    if (!titleData) return 'Unnamed Event';
+    
+    // Jika data sudah berupa object (sudah di-parse oleh axios)
+    if (typeof titleData === 'object') {
+      return titleData.id || titleData.en || 'Unnamed Event';
+    }
+
+    // Jika data berupa string, coba parse JSON
+    if (typeof titleData === 'string' && titleData.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(titleData);
+        return parsed.id || parsed.en || titleData;
+      } catch (e) {
+        return titleData;
+      }
+    }
+    return titleData;
+  };
+
   // 2. Delete/Revoke Logic
   const handleDelete = async (id) => {
     if(window.confirm("PERINGATAN: Menghapus tiket ini akan membatalkan akses QR Code customer secara permanen. Lanjutkan?")) {
@@ -69,10 +90,14 @@ const ManageTicket = () => {
   const filteredTickets = tickets
     .filter(t => {
       const search = searchTerm.toLowerCase();
+      const eventTitle = renderEventTitle(t.event_title).toLowerCase();
+      const customerName = (t.customer_name || '').toLowerCase();
+      const orderId = (t.order_id || '').toString().toLowerCase();
+
       return (
-        (t.event_title || '').toLowerCase().includes(search) ||
-        (t.customer_name || '').toLowerCase().includes(search) ||
-        (t.order_id || '').toString().includes(search)
+        eventTitle.includes(search) ||
+        customerName.includes(search) ||
+        orderId.includes(search)
       );
     })
     .sort((a, b) => {
@@ -195,7 +220,7 @@ const ManageTicket = () => {
                     <td className="px-6 md:px-10 py-6 md:py-7">
                       <div className="flex flex-col">
                         <span className="font-black text-slate-800 uppercase italic text-sm tracking-tight group-hover:text-[#E297C1] transition-colors">
-                          {ticket.event_title || 'Unnamed Event'}
+                          {renderEventTitle(ticket.event_title)}
                         </span>
                         <span className="text-[9px] font-bold text-slate-400 uppercase">{ticket.ticket_category}</span>
                       </div>

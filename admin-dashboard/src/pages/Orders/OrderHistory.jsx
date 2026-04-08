@@ -47,13 +47,36 @@ const OrderHistory = () => {
     fetchOrders();
   }, [navigate]);
 
+  // --- Helper function to handle JSON event titles ---
+  const renderEventTitle = (titleData) => {
+    if (!titleData) return 'N/A';
+    
+    // Jika data sudah berupa object (sudah di-parse oleh axios)
+    if (typeof titleData === 'object') {
+      return titleData.id || titleData.en || 'N/A';
+    }
+
+    // Jika data berupa string, coba parse JSON
+    if (typeof titleData === 'string' && titleData.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(titleData);
+        return parsed.id || parsed.en || titleData;
+      } catch (e) {
+        return titleData;
+      }
+    }
+    return titleData;
+  };
+
   // --- Filter Data Logic ---
   const filteredOrders = orders.filter(order => {
     const search = searchTerm.toLowerCase();
+    const eventTitle = renderEventTitle(order.event_title).toLowerCase();
+    
     const matchesSearch = 
       (order.id?.toString() || '').includes(search) || 
       (order.customer_name || '').toLowerCase().includes(search) ||
-      (order.event_title || '').toLowerCase().includes(search) ||
+      eventTitle.includes(search) ||
       (order.customer_email || '').toLowerCase().includes(search);
                           
     const matchesStatus = statusFilter === 'All' || order.status === statusFilter;
@@ -124,7 +147,7 @@ const OrderHistory = () => {
           <div className="relative group max-w-2xl">
             <div className="absolute -inset-1 bg-gradient-to-r from-[#E297C1] to-indigo-400 rounded-3xl blur opacity-10 group-hover:opacity-20 transition duration-1000"></div>
             <div className="relative">
-              <Search className="absolute left-5 md:left-6 top-1/2 -translate-y-1/2 text-slate-400" size={18} md:size={20} />
+              <Search className="absolute left-5 md:left-6 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
               <input 
                 type="text" 
                 placeholder="Search transaction ID, name, or event..." 
@@ -174,7 +197,7 @@ const OrderHistory = () => {
                     <td className="px-6 md:px-8 py-5">
                       <div className="flex flex-col">
                         <span className="text-xs md:text-sm font-black text-slate-800 uppercase italic tracking-tight mb-1 truncate max-w-[150px] md:max-w-[200px]">
-                            {order.event_title || 'N/A'}
+                            {renderEventTitle(order.event_title)}
                         </span>
                         <div className="flex items-center gap-2">
                           <span className="px-2 py-0.5 bg-slate-100 rounded text-[8px] md:text-[9px] font-black text-slate-500 uppercase">
@@ -232,12 +255,11 @@ const OrderHistory = () => {
                     currentPage === 1 ? 'text-slate-200 border-slate-100 cursor-not-allowed' : 'text-slate-600 border-slate-200 hover:bg-white hover:shadow-md active:scale-90'
                   }`}
                 >
-                  <ChevronLeft size={18} md:size={20} />
+                  <ChevronLeft size={20} />
                 </button>
 
                 <div className="flex gap-1 md:gap-2">
                   {[...Array(totalPages)].map((_, i) => (
-                    // Logic to show limited pages on mobile could be added here
                     <button
                       key={i + 1}
                       onClick={() => paginate(i + 1)}
@@ -259,7 +281,7 @@ const OrderHistory = () => {
                     currentPage === totalPages ? 'text-slate-200 border-slate-100 cursor-not-allowed' : 'text-slate-600 border-slate-200 hover:bg-white hover:shadow-md active:scale-90'
                   }`}
                 >
-                  <ChevronRight size={18} md:size={20} />
+                  <ChevronRight size={20} />
                 </button>
               </div>
             )}

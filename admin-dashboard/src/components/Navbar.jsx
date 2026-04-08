@@ -17,8 +17,8 @@ const Navbar = () => {
   const navigate = useNavigate();
   const dropdownRef = useRef(null);
   const notificationRef = useRef(null);
-  const context = useConfig();
-  const settings = context?.settings || { notificationSound: 'muted', privacyMode: false };  
+  
+  const { settings } = useConfig();
   
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -30,12 +30,6 @@ const Navbar = () => {
     email: '',
     avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix'
   });
-
-  const playNotifSound = () => {
-    if (settings.notificationSound === 'muted') return;
-    const audio = new Audio(`/sounds/${settings.notificationSound}.mp3`);
-    audio.play().catch(err => console.log("Audio play blocked by browser"));
-  };
 
   const loadAdminData = () => {
     const savedUser = localStorage.getItem('user');
@@ -53,7 +47,6 @@ const Navbar = () => {
     }
   };
 
-  // Fungsi Helper untuk memformat waktu secara akurat ke WIB (Local)
   const formatNotifTime = (dateString) => {
     try {
       const date = new Date(dateString);
@@ -61,10 +54,22 @@ const Navbar = () => {
         hour: '2-digit',
         minute: '2-digit',
         hour12: false,
-        timeZone: 'Asia/Jakarta' // Memastikan waktu Indonesia
+        timeZone: 'Asia/Jakarta'
       }).replace('.', ':');
     } catch (e) {
       return '--:--';
+    }
+  };
+
+  const fetchNotifications = async () => {
+    try {
+      const response = await adminService.getNotifications();
+      if (response.data.status === "success") {
+        setUnreadCount(response.data.unread_count);
+        setNotifications(response.data.data);
+      }
+    } catch (error) {
+      console.error("Gagal mengambil notifikasi:", error);
     }
   };
 
@@ -76,37 +81,24 @@ const Navbar = () => {
     window.addEventListener('profileUpdated', handleStorageChange);
 
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 10000); // Dipercepat ke 10 detik agar lebih real-time
+    const interval = setInterval(fetchNotifications, 10000); 
     
     return () => {
       clearInterval(interval);
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('profileUpdated', handleStorageChange);
     };
-  }, [unreadCount]);
-
-  const fetchNotifications = async () => {
-    try {
-      const response = await adminService.getNotifications();
-      if (response.data.status === "success") {
-        if (response.data.unread_count > unreadCount) {
-          playNotifSound();
-        }
-        setNotifications(response.data.data);
-        setUnreadCount(response.data.unread_count);
-      }
-    } catch (error) {
-      console.error("Gagal mengambil notifikasi:", error);
-    }
-  };
+  }, []);
 
   const handleBellClick = async () => {
     setIsNotifOpen(!isNotifOpen);
     setIsDropdownOpen(false);
+    
     if (!isNotifOpen && unreadCount > 0) {
       try {
         await adminService.markAllNotificationsAsRead();
         setUnreadCount(0);
+        setNotifications(prev => prev.map(n => ({...n, is_read: 1})));
       } catch (error) {
         console.error("Gagal update status baca:", error);
       }
@@ -150,7 +142,7 @@ const Navbar = () => {
       {/* 2. Kanan: User Actions */}
       <div className="flex items-center gap-3 md:gap-5">
         
-        {/* Notification Bell Container */}
+        {/* Notification Bell */}
         <div className="relative" ref={notificationRef}>
           <button 
             onClick={handleBellClick}
@@ -166,9 +158,8 @@ const Navbar = () => {
             )}
           </button>
 
-          {/* DROPDOWN NOTIFIKASI - Perbaikan Posisi & Alignment */}
           {isNotifOpen && (
-            <div className="absolute right-0 md:right-[-40px] mt-4 w-[300px] xs:w-85 bg-[#1A1A2E] border border-white/10 rounded-[24px] md:rounded-[28px] shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300 z-[70] origin-top-right">
+            <div className="absolute right-0 md:right-[-40px] mt-4 w-[280px] xs:w-85 bg-[#1A1A2E] border border-white/10 rounded-[24px] md:rounded-[28px] shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300 z-[70] origin-top-right">
               <div className="px-5 py-4 border-b border-white/5 flex justify-between items-center bg-white/2">
                 <p className="text-[10px] font-black text-[#E297C1] uppercase tracking-[0.2em]">Live Activity</p>
                 <CheckCircle2 size={14} className="text-white/20" />
@@ -191,7 +182,7 @@ const Navbar = () => {
                           <span>{formatNotifTime(notif.created_at)}</span>
                         </div>
                       </div>
-                      <p className={`text-[11px] text-white/50 leading-relaxed ${settings.privacyMode ? 'privacy-blur' : ''}`}>
+                      <p className={`text-[11px] text-white/50 leading-relaxed transition-all duration-500 ${settings?.privacyMode ? 'blur-sm select-none opacity-40' : ''}`}>
                         {notif.message}
                       </p>
                     </div>
@@ -199,17 +190,19 @@ const Navbar = () => {
                 )}
               </div>
               
-              <button className="w-full py-3 bg-white/2 hover:bg-white/5 text-[10px] font-black text-white/40 hover:text-white uppercase tracking-[0.2em] transition-all">
+              <button 
+                onClick={() => { navigate('/admin/logs'); setIsNotifOpen(false); }}
+                className="w-full py-3 bg-white/2 hover:bg-white/5 text-[10px] font-black text-white/40 hover:text-white uppercase tracking-[0.2em] transition-all"
+              >
                 View All Logs
               </button>
             </div>
           )}
         </div>
 
-        {/* Vertical Divider */}
         <div className="w-[1px] h-8 bg-white/10 hidden xs:block" />
 
-        {/* User Profile Dropdown */}
+        {/* User Profile */}
         <div className="relative" ref={dropdownRef}>
           <button 
             onClick={() => { setIsDropdownOpen(!isDropdownOpen); setIsNotifOpen(false); }}
@@ -220,11 +213,7 @@ const Navbar = () => {
             }`}
           >
             <div className="w-8 h-8 md:w-9 md:h-9 rounded-lg md:rounded-xl bg-[#0F0F1E] overflow-hidden border border-white/10 shrink-0">
-              <img 
-                src={adminData.avatar} 
-                alt="Avatar" 
-                className="w-full h-full object-cover"
-              />
+              <img src={adminData.avatar} alt="Avatar" className="w-full h-full object-cover" />
             </div>
             
             <div className="text-left hidden lg:block min-w-0">
@@ -239,34 +228,22 @@ const Navbar = () => {
             <ChevronDown size={14} className={`text-white/40 transition-transform duration-300 shrink-0 ${isDropdownOpen ? 'rotate-180 text-white' : ''}`} />
           </button>
 
-          {/* DROPDOWN MENU */}
           {isDropdownOpen && (
             <div className="absolute right-0 mt-4 w-56 md:w-64 bg-[#1A1A2E] border border-white/10 rounded-[24px] md:rounded-[28px] shadow-2xl py-3 px-2 animate-in fade-in slide-in-from-top-2 duration-300 origin-top-right z-[70]">
               <div className="px-5 py-4 border-b border-white/5 mb-2">
                 <p className="text-[9px] font-black text-[#E297C1] uppercase tracking-[0.2em] mb-1">Authentication</p>
-                <p className={`text-xs font-bold text-white truncate opacity-60 ${settings.privacyMode ? 'privacy-blur' : ''}`}>
+                <p className={`text-xs font-bold text-white truncate opacity-60 transition-all ${settings?.privacyMode ? 'blur-sm select-none opacity-30' : ''}`}>
                   {adminData.email || 'system.admin@raly.id'}
                 </p>
               </div>
 
               <div className="space-y-1">
-                <button onClick={() => {
-                    navigate('/admin/profile'); 
-                    setIsDropdownOpen(false);
-                }}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl md:rounded-2xl text-white/60 hover:bg-white/5 hover:text-white transition-all"
-                >
+                <button onClick={() => { navigate('/admin/profile'); setIsDropdownOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl md:rounded-2xl text-white/60 hover:bg-white/5 hover:text-white transition-all">
                   <User size={16} className="text-[#E297C1] shrink-0" />
                   <span className="text-xs font-bold">Profile Details</span>
                 </button>
 
-                <button 
-                  onClick={() => {
-                    navigate('/admin/preferences');
-                    setIsDropdownOpen(false);
-                  }}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl md:rounded-2xl text-white/60 hover:bg-white/5 hover:text-white transition-all"
-                >
+                <button onClick={() => { navigate('/admin/preferences'); setIsDropdownOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl md:rounded-2xl text-white/60 hover:bg-white/5 hover:text-white transition-all">
                   <Settings size={16} className="text-[#E297C1] shrink-0" />
                   <span className="text-xs font-bold">Preferences</span>
                 </button>
@@ -274,17 +251,13 @@ const Navbar = () => {
 
               <div className="h-[1px] bg-white/5 my-2 mx-3" />
 
-              <button 
-                onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-4 py-4 rounded-xl md:rounded-2xl text-red-400 hover:bg-red-500/10 transition-all group"
-              >
+              <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-4 rounded-xl md:rounded-2xl text-red-400 hover:bg-red-500/10 transition-all group">
                 <LogOut size={16} className="group-hover:translate-x-1 transition-transform shrink-0" />
                 <span className="text-xs font-black uppercase tracking-[0.15em]">Terminate Session</span>
               </button>
             </div>
           )}
         </div>
-
       </div>
     </header>
   );
