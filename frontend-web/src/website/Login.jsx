@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Mail, Lock, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, Loader2, Eye, EyeOff, Languages } from 'lucide-react';
 import api from '../api/axiosConfig'; 
 // Pastikan path ini benar sesuai struktur folder kamu
 import logo from '../assets/logo.png'; 
@@ -9,6 +9,7 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Langsung set default ke 'id' agar otomatis Bahasa Indonesia saat dibuka
   const [lang, setLang] = useState('id'); 
   const [email, setEmail] = useState(location.state?.registeredEmail || '');
   const [password, setPassword] = useState('');
@@ -66,23 +67,19 @@ const Login = () => {
       const { accessToken, token, user } = response.data;
       const finalToken = accessToken || token;
 
-      if (finalToken && user) {
-        // Gunakan satu nama key yang konsisten, misal 'token'
-        localStorage.setItem('token', finalToken); 
-        localStorage.setItem('userId', user.id);
-        localStorage.setItem('user', JSON.stringify(user));
-        
-        // Redirect ke dashboard atau home
-        navigate('/', { replace: true }); 
+      if (token && userData) {
+        localStorage.setItem('userToken', token); 
+        localStorage.setItem('token', token);      
+        localStorage.setItem('userId', userData.id);
+        localStorage.setItem('user', JSON.stringify(userData));
+        navigate('/'); 
       } else {
         setError(getTranslation('errServer'));
       }
 
     } catch (err) {
       console.error("Login Error:", err);
-      // Menampilkan pesan error dari backend jika ada
-      const serverMessage = err.response?.data?.message;
-      setError(serverMessage || getTranslation('errAuth'));
+      setError(err.response?.data?.message || getTranslation('errAuth'));
     } finally {
       setIsLoading(false);
     }
@@ -97,20 +94,22 @@ const Login = () => {
           
           {/* LANGUAGE SELECTOR */}
           <div className="absolute top-8 right-8 flex items-center bg-slate-50 p-1 rounded-xl border border-slate-200 shadow-sm z-20">
-            {['id', 'en'].map((l) => (
-              <button 
-                key={l}
-                onClick={() => setLang(l)}
-                className={`px-3 py-1 text-[10px] font-black rounded-lg transition-all uppercase ${lang === l ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-slate-600'}`}
-              >
-                {l}
-              </button>
-            ))}
+            <button 
+              onClick={() => setLang('id')}
+              className={`px-3 py-1 text-[10px] font-black rounded-lg transition-all ${lang === 'id' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-slate-600'}`}
+            >
+              ID
+            </button>
+            <button 
+              onClick={() => setLang('en')}
+              className={`px-3 py-1 text-[10px] font-black rounded-lg transition-all ${lang === 'en' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-slate-600'}`}
+            >
+              EN
+            </button>
           </div>
 
-          {/* LOGO */}
           <div className="flex items-center gap-2 mb-10">
-            <img src={logo} alt="Raly Ticket Logo" className="h-8 w-auto object-contain" onError={(e) => e.target.style.display='none'} />
+            <img src={logo} alt="Logo" className="h-8 w-auto object-contain" />
             <span className="font-black uppercase tracking-tighter text-slate-900 text-xl">Raly Ticket</span>
           </div>
 
@@ -138,7 +137,7 @@ const Login = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full border-2 border-slate-900 rounded-2xl py-3.5 px-12 outline-none focus:border-purple-600 font-bold transition-all text-slate-900 text-sm" 
+                className="w-full border-2 border-slate-900 rounded-2xl py-3.5 px-12 outline-none focus:border-purple-600 font-bold transition-all text-slate-900 text-sm sm:text-base" 
               />
             </div>
             <div className="relative">
@@ -149,7 +148,7 @@ const Login = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full border-2 border-slate-900 rounded-2xl py-3.5 px-12 outline-none focus:border-purple-600 font-bold transition-all text-slate-900 text-sm" 
+                className="w-full border-2 border-slate-900 rounded-2xl py-3.5 px-12 outline-none focus:border-purple-600 font-bold transition-all text-slate-900 text-sm sm:text-base" 
               />
               <button 
                 type="button"
@@ -161,9 +160,9 @@ const Login = () => {
             </div>
             
             <div className="flex justify-end pt-1">
-                <button type="button" className="text-[10px] font-black text-purple-600 uppercase cursor-pointer hover:underline tracking-widest bg-transparent border-none p-0">
+                <span className="text-[10px] font-black text-purple-600 uppercase cursor-pointer hover:underline tracking-widest">
                   {getTranslation('forgot')}
-                </button>
+                </span>
             </div>
 
             <button 
@@ -179,7 +178,7 @@ const Login = () => {
             <p className="text-[10px] font-black text-slate-400 mb-4 uppercase tracking-widest">
               {getTranslation('orSign')}
             </p>
-            <button type="button" className="w-full border-2 border-slate-900 py-3.5 rounded-2xl flex items-center justify-center gap-3 font-black hover:bg-slate-50 transition active:scale-95">
+            <button className="w-full border-2 border-slate-900 py-3.5 rounded-2xl flex items-center justify-center gap-3 font-black hover:bg-slate-50 transition active:scale-95">
               <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/auth_service_google.svg" className="w-5 h-5" alt="Google" />
               <span className="text-xs font-black uppercase tracking-wider">
                 {getTranslation('googleSign')}
@@ -190,7 +189,6 @@ const Login = () => {
 
         {/* SISI KANAN: PANEL UNGU */}
         <div className="w-full md:w-[380px] bg-purple-700 p-10 md:p-14 flex flex-col items-center justify-center text-center text-white relative overflow-hidden order-2">
-          {/* Ornamen Lingkaran */}
           <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-purple-600 rounded-full opacity-20"></div>
           <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-48 h-48 bg-purple-800 rounded-full opacity-30"></div>
           

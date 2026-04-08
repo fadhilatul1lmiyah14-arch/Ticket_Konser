@@ -133,14 +133,6 @@ const ManageTicket = () => {
               Manage <span className="text-transparent bg-clip-text bg-gradient-to-r from-slate-900 to-[#E297C1]">Tickets</span>
             </h1>
           </div>
-          
-          <button 
-            onClick={() => navigate('/admin/scanner')}
-            className="w-full md:w-auto group bg-slate-900 text-white px-8 py-4 sm:py-5 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-4 hover:bg-[#E297C1] transition-all shadow-2xl shadow-slate-200 active:scale-95"
-          >
-            <QrCode size={20} className="group-hover:rotate-12 transition-transform" /> 
-            Launch Access Scanner
-          </button>
         </header>
 
         {/* TOOLBAR */}

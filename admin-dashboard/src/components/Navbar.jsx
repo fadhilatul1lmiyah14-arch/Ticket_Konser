@@ -53,6 +53,21 @@ const Navbar = () => {
     }
   };
 
+  // Fungsi Helper untuk memformat waktu secara akurat ke WIB (Local)
+  const formatNotifTime = (dateString) => {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleTimeString('id-ID', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+        timeZone: 'Asia/Jakarta' // Memastikan waktu Indonesia
+      }).replace('.', ':');
+    } catch (e) {
+      return '--:--';
+    }
+  };
+
   useEffect(() => {
     loadAdminData();
     const handleStorageChange = () => loadAdminData();
@@ -61,7 +76,7 @@ const Navbar = () => {
     window.addEventListener('profileUpdated', handleStorageChange);
 
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000); 
+    const interval = setInterval(fetchNotifications, 10000); // Dipercepat ke 10 detik agar lebih real-time
     
     return () => {
       clearInterval(interval);
@@ -88,7 +103,7 @@ const Navbar = () => {
   const handleBellClick = async () => {
     setIsNotifOpen(!isNotifOpen);
     setIsDropdownOpen(false);
-    if (unreadCount > 0) {
+    if (!isNotifOpen && unreadCount > 0) {
       try {
         await adminService.markAllNotificationsAsRead();
         setUnreadCount(0);
@@ -135,7 +150,7 @@ const Navbar = () => {
       {/* 2. Kanan: User Actions */}
       <div className="flex items-center gap-3 md:gap-5">
         
-        {/* Notification Bell */}
+        {/* Notification Bell Container */}
         <div className="relative" ref={notificationRef}>
           <button 
             onClick={handleBellClick}
@@ -151,9 +166,9 @@ const Navbar = () => {
             )}
           </button>
 
-          {/* DROPDOWN NOTIFIKASI - Responsive Width */}
+          {/* DROPDOWN NOTIFIKASI - Perbaikan Posisi & Alignment */}
           {isNotifOpen && (
-            <div className="absolute right-[-60px] md:right-0 mt-4 w-[calc(100vw-2rem)] xs:w-80 bg-[#1A1A2E] border border-white/10 rounded-[24px] md:rounded-[28px] shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="absolute right-0 md:right-[-40px] mt-4 w-[300px] xs:w-85 bg-[#1A1A2E] border border-white/10 rounded-[24px] md:rounded-[28px] shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300 z-[70] origin-top-right">
               <div className="px-5 py-4 border-b border-white/5 flex justify-between items-center bg-white/2">
                 <p className="text-[10px] font-black text-[#E297C1] uppercase tracking-[0.2em]">Live Activity</p>
                 <CheckCircle2 size={14} className="text-white/20" />
@@ -167,11 +182,13 @@ const Navbar = () => {
                 ) : (
                   notifications.map((notif) => (
                     <div key={notif.id} className={`px-5 py-4 border-b border-white/5 hover:bg-white/[0.02] transition-colors ${!notif.is_read ? 'bg-[#E297C1]/5' : ''}`}>
-                      <div className="flex justify-between items-start mb-1 gap-2">
-                        <h4 className="text-xs font-bold text-white/90 leading-tight">{notif.title}</h4>
-                        <div className="flex items-center gap-1 text-[9px] font-bold text-white/30 uppercase shrink-0">
+                      <div className="flex justify-between items-start gap-3 mb-1">
+                        <h4 className="text-xs font-bold text-white/90 leading-tight flex-1">
+                          {notif.title}
+                        </h4>
+                        <div className="flex items-center gap-1 text-[9px] font-bold text-white/30 uppercase shrink-0 mt-0.5">
                           <Clock size={10} />
-                          {new Date(notif.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          <span>{formatNotifTime(notif.created_at)}</span>
                         </div>
                       </div>
                       <p className={`text-[11px] text-white/50 leading-relaxed ${settings.privacyMode ? 'privacy-blur' : ''}`}>
@@ -189,7 +206,7 @@ const Navbar = () => {
           )}
         </div>
 
-        {/* Vertical Divider - Hidden on small mobile */}
+        {/* Vertical Divider */}
         <div className="w-[1px] h-8 bg-white/10 hidden xs:block" />
 
         {/* User Profile Dropdown */}
@@ -224,7 +241,7 @@ const Navbar = () => {
 
           {/* DROPDOWN MENU */}
           {isDropdownOpen && (
-            <div className="absolute right-0 mt-4 w-56 md:w-64 bg-[#1A1A2E] border border-white/10 rounded-[24px] md:rounded-[28px] shadow-2xl py-3 px-2 animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="absolute right-0 mt-4 w-56 md:w-64 bg-[#1A1A2E] border border-white/10 rounded-[24px] md:rounded-[28px] shadow-2xl py-3 px-2 animate-in fade-in slide-in-from-top-2 duration-300 origin-top-right z-[70]">
               <div className="px-5 py-4 border-b border-white/5 mb-2">
                 <p className="text-[9px] font-black text-[#E297C1] uppercase tracking-[0.2em] mb-1">Authentication</p>
                 <p className={`text-xs font-bold text-white truncate opacity-60 ${settings.privacyMode ? 'privacy-blur' : ''}`}>

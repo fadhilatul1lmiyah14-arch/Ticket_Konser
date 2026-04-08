@@ -1,19 +1,78 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Ticket, Filter, Loader2, ArrowUpDown, ChevronDown, Calendar, Music } from 'lucide-react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { MapPin, Ticket, Filter, Loader2, ArrowUpDown, ChevronDown, Calendar, Music, Clock, ChevronRight, ChevronLeft } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../api/axiosConfig'; 
 import MainLayout from '../layouts/MainLayout';
 
 const Events = () => {
+  const navigate = useNavigate();
   const [events, setEvents] = useState([]);
   const [locations, setLocations] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentLang, setCurrentLang] = useState(localStorage.getItem('lang') || 'id');
   const location = useLocation();
 
+  // State Filter
   const [selectedLocation, setSelectedLocation] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [sortBy, setSortBy] = useState('terbaru');
+
+  // State Pagination (9 per halaman)
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 9;
+
+  const getTranslation = (data) => {
+    const lang = currentLang;
+    if (!data) return "";
+    if (typeof data === 'string') {
+      try {
+        const parsed = JSON.parse(data);
+        return parsed[lang] || parsed['id'] || data;
+      } catch (e) {
+        return data;
+      }
+    }
+    if (typeof data === 'object') {
+      return data[lang] || data['id'] || "";
+    }
+    return data;
+  };
+
+  const t = {
+    id: {
+      hero_1: "TEMUKAN",
+      hero_2: "BEATMU SEKARANG",
+      loc_label: "Lokasi Konser",
+      cat_label: "Genre / Kategori",
+      sort_label: "Urutkan Berdasarkan",
+      all: "Tampilkan Semua",
+      found: "Item Ditemukan",
+      filtering: "Menyaring Konser...",
+      no_match: "Tidak Ada Event Ditemukan",
+      sort_options: ["Terbaru Diupload", "Terlama Diupload", "Harga Tertinggi", "Harga Terendah"]
+    },
+    en: {
+      hero_1: "FIND YOUR",
+      hero_2: "BEAT NOW",
+      loc_label: "Concert Location",
+      cat_label: "Genre / Category",
+      sort_label: "Sort By",
+      all: "Show All",
+      found: "Items Found",
+      filtering: "Filtering Concerts...",
+      no_match: "No Events Found",
+      sort_options: ["Latest Upload", "Oldest Upload", "Highest Price", "Lowest Price"]
+    }
+  }[currentLang];
+
+  useEffect(() => {
+    const handleLangChange = () => {
+      setCurrentLang(localStorage.getItem('lang') || 'id');
+    };
+    window.addEventListener('languageChanged', handleLangChange);
+    return () => window.removeEventListener('languageChanged', handleLangChange);
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -40,14 +99,13 @@ const Events = () => {
     fetchData();
   }, [location.search]);
 
-  const getProcessedEvents = () => {
-    let result = [...events];
-    result = result.filter(event => {
+  // Logika Filter & Sort
+  const filteredEvents = (() => {
+    let result = [...events].filter(event => {
       const eventLocName = event.location?.location_name || event.location || "";
       const eventCatName = event.category?.category_name || event.category || "";
-      const matchesLocation = !selectedLocation || eventLocName === selectedLocation;
-      const matchesCategory = !selectedCategory || eventCatName === selectedCategory;
-      return matchesLocation && matchesCategory;
+      return (!selectedLocation || eventLocName === selectedLocation) && 
+             (!selectedCategory || eventCatName === selectedCategory);
     });
 
     return result.sort((a, b) => {
@@ -57,61 +115,49 @@ const Events = () => {
       if (sortBy === 'termurah') return (Number(a.starting_price) || 0) - (Number(b.starting_price) || 0);
       return 0;
     });
-  };
+  })();
 
-  const filteredEvents = getProcessedEvents();
+  // Logika Pagination
+  const totalPages = Math.ceil(filteredEvents.length / itemsPerPage);
+  const currentItems = filteredEvents.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  const handlePageChange = (num) => {
+    setCurrentPage(num);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <MainLayout>
-      <div className="bg-[#0f172a] min-h-screen font-sans text-white">
+      <div className="bg-[#020617] min-h-screen font-sans text-white">
         
         {/* 1. HERO SECTION */}
-        <section className="px-4 md:px-10 pt-16 md:pt-24 pb-8 md:pb-12 max-w-7xl mx-auto">
-          <div className="mb-8 md:mb-12 text-center md:text-left relative">
-            <div className="absolute -left-10 -top-10 w-40 h-40 bg-purple-600/10 blur-[100px] rounded-full hidden md:block"></div>
-            <h2 className="text-4xl md:text-7xl font-black text-white uppercase tracking-tighter italic leading-[1] md:leading-[0.9]">
-              FIND YOUR <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-pink-500 text-5xl md:text-8xl">BEAT NOW</span>
+        <section className="px-4 md:px-10 pt-20 pb-10 max-w-7xl mx-auto">
+          <div className="mb-12 text-center md:text-left">
+            <h2 className="text-4xl md:text-7xl font-black text-white uppercase italic leading-none">
+              {t.hero_1} <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">{t.hero_2}</span>
             </h2>
           </div>
 
-          {/* FILTER BAR MODERN */}
-          <div className="bg-[#1e293b]/80 backdrop-blur-xl rounded-[25px] md:rounded-[35px] border border-slate-700/50 p-4 md:p-5 shadow-2xl flex flex-col lg:flex-row items-center gap-4 md:gap-5">
-            <div className="bg-gradient-to-br from-purple-600 to-indigo-600 text-white p-4 rounded-2xl shadow-lg shadow-purple-500/20 hidden lg:block">
-              <Filter size={22} />
+          {/* FILTER BAR */}
+          <div className="bg-white/5 backdrop-blur-xl rounded-[30px] border border-white/10 p-4 shadow-2xl flex flex-col lg:flex-row items-center gap-4">
+            <div className="bg-purple-600 text-white p-4 rounded-2xl hidden lg:block">
+              <Filter size={20} />
             </div>
             
-            <div className="flex-grow grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-5 w-full">
-              <FilterSelect 
-                icon={<MapPin size={18}/>} 
-                label="Lokasi Konser" 
-                options={locations} 
-                optionKey="location_name" 
-                value={selectedLocation}
-                onChange={setSelectedLocation}
-              />
-              <FilterSelect 
-                icon={<Ticket size={18}/>} 
-                label="Genre / Kategori" 
-                options={categories} 
-                optionKey="category_name" 
-                value={selectedCategory}
-                onChange={setSelectedCategory}
-              />
-              <div className="bg-[#0f172a] p-3 md:p-4 rounded-2xl border border-slate-800 flex items-center justify-between group hover:border-purple-500 transition-all relative">
+            <div className="flex-grow grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 w-full">
+              <FilterSelect icon={<MapPin size={18}/>} label={t.loc_label} options={locations} optionKey="location_name" value={selectedLocation} onChange={setSelectedLocation} allText={t.all} />
+              <FilterSelect icon={<Ticket size={18}/>} label={t.cat_label} options={categories} optionKey="category_name" value={selectedCategory} onChange={setSelectedCategory} allText={t.all} />
+              <div className="bg-slate-900/50 p-3 rounded-2xl border border-white/5 flex items-center justify-between relative">
                 <div className="flex items-center gap-3 w-full">
-                  <div className="text-purple-500"><ArrowUpDown size={18}/></div>
+                  <ArrowUpDown size={18} className="text-purple-400"/>
                   <div className="text-left w-full">
-                    <p className="text-[8px] md:text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Urutkan Berdasarkan</p>
-                    <select 
-                      className="bg-transparent border-none outline-none font-bold text-xs text-white w-full cursor-pointer appearance-none"
-                      value={sortBy}
-                      onChange={(e) => setSortBy(e.target.value)}
-                    >
-                      <option value="terbaru" className="bg-[#1e293b]">Terbaru Diupload</option>
-                      <option value="terlama" className="bg-[#1e293b]">Terlama Diupload</option>
-                      <option value="termahal" className="bg-[#1e293b]">Harga Tertinggi</option>
-                      <option value="termurah" className="bg-[#1e293b]">Harga Terendah</option>
+                    <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">{t.sort_label}</p>
+                    <select className="bg-transparent outline-none font-bold text-xs text-white w-full cursor-pointer appearance-none" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                      <option value="terbaru" className="bg-[#0f172a]">{t.sort_options[0]}</option>
+                      <option value="terlama" className="bg-[#0f172a]">{t.sort_options[1]}</option>
+                      <option value="termahal" className="bg-[#0f172a]">{t.sort_options[2]}</option>
+                      <option value="termurah" className="bg-[#0f172a]">{t.sort_options[3]}</option>
                     </select>
                   </div>
                 </div>
@@ -123,60 +169,60 @@ const Events = () => {
 
         {/* 2. EXPLORE EVENTS LIST */}
         <section className="px-4 md:px-10 py-6 max-w-7xl mx-auto">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 md:mb-12 gap-4">
-            <div className="flex items-center gap-3 md:gap-4">
-                <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-tighter italic">Explore Events</h2>
-                <span className="bg-slate-800 text-[8px] md:text-[10px] px-3 py-1 rounded-full font-black text-purple-400 border border-slate-700 uppercase tracking-widest">
-                  {filteredEvents.length} Items Found
-                </span>
-            </div>
+          <div className="flex items-center gap-4 mb-10">
+            <h2 className="text-xl md:text-2xl font-black uppercase italic">Explore Events</h2>
+            <span className="bg-slate-800 text-[10px] px-3 py-1 rounded-full font-black text-purple-400 border border-slate-700">
+              {filteredEvents.length} {t.found}
+            </span>
           </div>
 
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-24 md:py-32 bg-slate-900/30 rounded-[30px] md:rounded-[40px] border border-slate-800/50 border-dashed">
-              <Loader2 className="animate-spin text-purple-500 mb-4" size={40} md:size={50} />
-              <p className="text-slate-500 font-black uppercase tracking-[0.3em] text-[8px] md:text-[10px]">Filtering Concerts...</p>
+            <div className="flex flex-col items-center justify-center py-32 bg-white/5 rounded-[40px] border border-white/10 border-dashed">
+              <Loader2 className="animate-spin text-purple-500 mb-4" size={40} />
+              <p className="text-slate-500 font-black uppercase tracking-[0.3em] text-[10px]">{t.filtering}</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
-              {filteredEvents.length > 0 ? (
-                filteredEvents.map((event) => (
-                  <EventCard key={event.id} event={event} />
-                ))
-              ) : (
-                <div className="col-span-full text-center py-20 md:py-32 border-2 border-dashed border-slate-800 rounded-[30px] md:rounded-[50px] px-6">
-                  <Music className="mx-auto text-slate-700 mb-4 opacity-20" size={40} md:size={48} />
-                  <p className="text-slate-600 font-black uppercase tracking-[0.3em] md:tracking-[0.5em] text-xs md:text-sm">No Events Found</p>
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
+                {currentItems.length > 0 ? (
+                  currentItems.map((event) => (
+                    <EventCard key={event.id} event={event} getTranslation={getTranslation} lang={currentLang} />
+                  ))
+                ) : (
+                  <div className="col-span-full py-20 text-slate-500 uppercase font-black tracking-widest">{t.no_match}</div>
+                )}
+              </div>
+
+              {/* PAGINATION */}
+              {totalPages > 1 && (
+                <div className="mt-16 flex justify-center items-center gap-2">
+                  <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className="p-3 rounded-xl bg-white/5 border border-white/10 disabled:opacity-20 hover:bg-purple-600 transition-all"><ChevronLeft size={18}/></button>
+                  {[...Array(totalPages)].map((_, i) => (
+                    <button key={i} onClick={() => handlePageChange(i + 1)} className={`w-10 h-10 rounded-xl font-black text-xs transition-all ${currentPage === i + 1 ? 'bg-white text-black' : 'bg-white/5 text-slate-400 border border-white/10'}`}>
+                      {i + 1}
+                    </button>
+                  ))}
+                  <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className="p-3 rounded-xl bg-white/5 border border-white/10 disabled:opacity-20 hover:bg-purple-600 transition-all"><ChevronRight size={18}/></button>
                 </div>
               )}
-            </div>
+            </>
           )}
         </section>
-        
-        <div className="pb-16 md:pb-24"></div>
+        <div className="pb-20"></div>
       </div>
     </MainLayout>
   );
 };
 
-// HELPER COMPONENTS
-const FilterSelect = ({ icon, label, options, optionKey, value, onChange }) => (
-  <div className="bg-[#0f172a] p-3 md:p-4 rounded-2xl border border-slate-800 flex items-center justify-between group hover:border-purple-500 transition-all relative">
+const FilterSelect = ({ icon, label, options, optionKey, value, onChange, allText }) => (
+  <div className="bg-slate-900/50 p-3 rounded-2xl border border-white/5 flex items-center justify-between relative group hover:border-purple-500/50 transition-all">
     <div className="flex items-center gap-3 w-full">
-      <div className="text-purple-500">{icon}</div>
+      <div className="text-purple-400">{icon}</div>
       <div className="text-left w-full">
-        <p className="text-[8px] md:text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">{label}</p>
-        <select 
-          className="bg-transparent border-none outline-none font-bold text-xs text-white w-full cursor-pointer appearance-none"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-        >
-          <option value="" className="bg-[#1e293b]">Tampilkan Semua</option>
-          {options.map((opt) => (
-            <option key={opt.id} value={opt[optionKey]} className="bg-[#1e293b]">
-              {opt[optionKey]}
-            </option>
-          ))}
+        <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">{label}</p>
+        <select className="bg-transparent outline-none font-bold text-xs text-white w-full cursor-pointer appearance-none" value={value} onChange={(e) => onChange(e.target.value)}>
+          <option value="" className="bg-[#0f172a]">{allText}</option>
+          {options.map((opt) => (<option key={opt.id} value={opt[optionKey]} className="bg-[#0f172a]">{opt[optionKey]}</option>))}
         </select>
       </div>
     </div>
@@ -184,72 +230,47 @@ const FilterSelect = ({ icon, label, options, optionKey, value, onChange }) => (
   </div>
 );
 
-const EventCard = ({ event }) => {
+const EventCard = ({ event, getTranslation, lang }) => {
   const navigate = useNavigate();
-  const { 
-    id, 
-    title, 
-    location, 
-    category, 
-    event_date, 
-    images, 
-    starting_price,
-    remaining_quota 
-  } = event;
+  const { id, title, location, category, event_date, start_time, images, starting_price, remaining_quota } = event;
 
-  const formatIDR = (amount) => new Intl.NumberFormat('id-ID', {
-    style: 'currency', currency: 'IDR', maximumFractionDigits: 0
-  }).format(amount || 0);
-
-  const formattedDate = event_date 
-    ? new Date(event_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) 
-    : "Venue TBA";
+  const formatIDR = (amount) => amount ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(amount).replace('Rp', 'RP.') : "IDR 0";
+  
+  const dateObj = event_date ? new Date(event_date) : null;
+  const day = dateObj ? dateObj.getDate() : "??";
+  const month = dateObj ? dateObj.toLocaleDateString(lang === 'id' ? 'id-ID' : 'en-US', { month: 'short' }) : "TBA";
+  const year = dateObj ? dateObj.getFullYear() : "2026";
+  const quota = Number(remaining_quota) || 0;
 
   return (
-    <div className="bg-[#1e293b]/50 backdrop-blur-sm rounded-[30px] md:rounded-[35px] overflow-hidden border border-slate-800 group hover:border-purple-500/50 hover:-translate-y-2 md:hover:-translate-y-3 transition-all duration-500 shadow-2xl flex flex-col h-full text-left">
-      <div className="h-48 md:h-64 relative overflow-hidden p-2 md:p-3">
-        <img 
-          src={images?.[0] || "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?q=80&w=600"} 
-          className="w-full h-full object-cover rounded-[20px] md:rounded-[25px] group-hover:scale-110 transition-transform duration-1000" 
-          alt={title} 
-        />
-        <div className="absolute top-4 left-4 md:top-6 md:left-6 bg-purple-600 px-3 py-1 md:px-4 md:py-1.5 rounded-full text-[8px] md:text-[9px] font-black uppercase tracking-widest text-white shadow-lg border border-purple-400/30">
-          {category || "CONCERT"}
-        </div>
-        <div className={`absolute top-4 right-4 md:top-6 md:right-6 px-2.5 py-1 md:px-3 md:py-1.5 rounded-full text-[7px] md:text-[8px] font-bold uppercase tracking-tighter text-white border backdrop-blur-md ${
-            remaining_quota > 0 ? 'bg-black/50 border-white/10' : 'bg-red-600 border-red-400'
-        }`}>
-            {remaining_quota > 0 ? `${remaining_quota} Slots Left` : 'Sold Out'}
-        </div>
-      </div>
+    <div onClick={() => navigate(`/event/${id}`)} className="relative w-full max-w-[340px] h-[420px] rounded-[32px] overflow-hidden group cursor-pointer shadow-xl transition-all duration-500 hover:-translate-y-2">
+      <img src={images?.[0] || "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?q=80&w=600"} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 brightness-[0.7]" alt="event" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent"></div>
       
-      <div className="px-5 pb-6 md:px-7 md:pb-7 pt-2 flex flex-col flex-1">
-        <h3 className="font-black text-xl md:text-2xl text-white leading-tight uppercase italic mb-4 md:mb-5 group-hover:text-purple-400 transition-colors line-clamp-2 min-h-[3rem] md:min-h-[3.5rem]">
-          {title}
-        </h3>
-        <div className="space-y-3 md:space-y-4 mb-6 md:mb-8 flex-1 text-slate-400">
-          <div className="flex items-center gap-3 text-[9px] md:text-[10px] font-bold uppercase tracking-widest">
-            <Calendar size={14} className="text-purple-500 shrink-0" />
-            <span className="truncate">{formattedDate}</span>
-          </div>
-          <div className="flex items-center gap-3 text-[9px] md:text-[10px] font-bold uppercase tracking-widest">
-            <MapPin size={14} className="text-purple-500 shrink-0" />
-            <span className="line-clamp-1">{location || "Venue TBA"}</span>
-          </div>
+      <div className="absolute top-5 left-5 right-5 flex justify-between z-20">
+        <div className="bg-black/40 backdrop-blur-md border border-white/10 px-3 py-1 rounded-lg text-[10px] font-black text-white">{formatIDR(starting_price)}</div>
+        <div className={`px-3 py-1 rounded-lg text-[9px] font-black text-white backdrop-blur-md border ${quota > 0 ? 'bg-purple-600/60 border-purple-400/30' : 'bg-red-600/60 border-red-400/30'}`}>{quota > 0 ? `${quota} LEFT` : 'SOLD OUT'}</div>
+      </div>
+
+      <div className="absolute bottom-0 left-0 right-0 p-6 z-20">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-1 h-3 bg-purple-500 rounded-full"></div>
+          <span className="text-purple-400 text-[9px] font-black uppercase tracking-widest">{category?.category_name || category || 'EVENT'}</span>
         </div>
-        <div className="pt-5 md:pt-6 border-t border-slate-800 flex justify-between items-center">
-          <div className="text-left">
-            <p className="text-slate-500 text-[7px] md:text-[8px] font-black uppercase tracking-[0.2em] mb-1">Starts From</p>
-            <p className="text-white font-black text-lg md:text-xl italic tracking-tighter">
-              {starting_price > 0 ? formatIDR(starting_price) : "TBA"}
-            </p>
+        <h3 className="text-xl font-black text-white uppercase italic leading-tight mb-4 line-clamp-2">{getTranslation(title)}</h3>
+        
+        <div className="flex items-center justify-between border-t border-white/10 pt-4">
+          <div className="flex items-center gap-3">
+            <div className="bg-white text-black w-10 h-10 rounded-xl flex flex-col items-center justify-center">
+              <span className="text-sm font-black leading-none">{day}</span>
+              <span className="text-[7px] font-black uppercase">{month}</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-white text-[10px] font-black uppercase">{year}</span>
+              <div className="flex items-center gap-1 text-slate-400 text-[9px] font-bold"><Clock size={10} className="text-purple-400"/>{start_time?.slice(0, 5) || "19:00"}</div>
+            </div>
           </div>
-          <button 
-            onClick={() => navigate(`/event/${id}`)}
-            className="bg-white text-black text-[9px] md:text-[10px] font-black px-5 py-3 md:px-7 md:py-3.5 rounded-xl hover:bg-purple-600 hover:text-white transition-all duration-300 uppercase tracking-widest shadow-xl active:scale-95"
-          >
-            Details
-          </button>
+          <div className="bg-white/10 p-2 rounded-full border border-white/20 group-hover:bg-white group-hover:text-black transition-all"><ChevronRight size={16} /></div>
         </div>
       </div>
     </div>

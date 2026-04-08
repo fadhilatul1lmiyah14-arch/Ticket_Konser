@@ -16,7 +16,6 @@ import EditConcert from './pages/Concerts/EditConcert';
 import ManageTicket from './pages/Tickets/ManageTicket';
 import ManageMasterData from './pages/MasterData/ManageMasterData';
 import OrderHistory from './pages/Orders/OrderHistory';
-import TicketScanner from './pages/Admin/TicketScanner';
 import Preferences from './pages/Admin/Preferences';
 
 // --- HELPER COMPONENTS ---
@@ -114,7 +113,6 @@ function App() {
             <Route path="tickets" element={<ManageTicket />} />
             <Route path="orders" element={<OrderHistory />} />
             <Route path="master-data" element={<ManageMasterData />} />
-            <Route path="scanner" element={<TicketScanner />} />
             <Route path="preferences" element={<Preferences />} />
             <Route path="profile" element={<Profile />} />
           </Route>
