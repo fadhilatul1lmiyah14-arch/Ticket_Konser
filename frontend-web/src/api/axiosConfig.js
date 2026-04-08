@@ -5,7 +5,7 @@ import axios from 'axios';
  */
 const api = axios.create({
   // UPDATE: Menggunakan link Tunnelmole terbaru agar bisa diakses internet
-  baseURL: 'https://didjvn-ip-182-8-195-136.tunnelmole.net', 
+  baseURL: 'https://6pfxyt-ip-182-8-195-136.tunnelmole.net', 
   headers: {
     'Content-Type': 'application/json',
   },

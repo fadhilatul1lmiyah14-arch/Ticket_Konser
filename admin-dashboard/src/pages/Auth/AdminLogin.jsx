@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axiosConfig'; 
+import logo from '../../assets/logo.png'; 
 import { 
   Lock, 
   Mail, 
-  Ticket, 
   ArrowRight, 
   ShieldCheck, 
   AlertCircle, 
@@ -44,25 +44,24 @@ const AdminLogin = () => {
           localStorage.setItem('adminRole', user.role);
           
           if (user.role?.toUpperCase() !== 'ADMIN') {
-             throw new Error("ROLE_TIDAK_SESUAI");
+             throw new Error("ROLE_NOT_AUTHORIZED");
           }
         }
 
-        // Redirect ke Admin Dashboard
         navigate('/admin/dashboard'); 
       } else {
-        setError("GAGAL: Token tidak ditemukan dalam respon server.");
+        setError("FAILED: Token not found in server response.");
       }
       
     } catch (err) {
-      if (err.message === "ROLE_TIDAK_SESUAI") {
-        setError("AKSES DITOLAK: AKUN ANDA BUKAN ROLE ADMIN!");
+      if (err.message === "ROLE_NOT_AUTHORIZED") {
+        setError("ACCESS DENIED: YOUR ACCOUNT IS NOT ADMIN!");
       } else if (!err.response) {
-        setError('KONEKSI GAGAL: SERVER TIDAK MERESPON!');
+        setError("CONNECTION FAILED: SERVER NOT RESPONDING!");
       } else if (err.response.status === 401) {
-        setError('EMAIL ATAU PASSWORD SALAH!');
+        setError("INCORRECT EMAIL OR PASSWORD!");
       } else {
-        setError(err.response.data?.error || err.response.data?.message || 'TERJADI KESALAHAN');
+        setError(err.response.data?.error || err.response.data?.message || "SOMETHING WENT WRONG");
       }
     } finally {
       setIsLoading(false);
@@ -78,16 +77,20 @@ const AdminLogin = () => {
       {/* Main Container */}
       <div className="max-w-[480px] w-full bg-white rounded-[40px] sm:rounded-[56px] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.08)] overflow-hidden border border-white p-8 sm:p-12 relative z-10 h-fit">
         
-        {/* Header */}
+        {/* Header with Logo Image */}
         <div className="flex flex-col items-center mb-8 sm:mb-12">
-          <div className="bg-[#E297C1] p-4 sm:p-5 rounded-[24px] sm:rounded-[28px] mb-4 sm:mb-6 shadow-2xl shadow-pink-200 transform -rotate-6 hover:rotate-0 transition-all duration-500 cursor-pointer group">
-            <Ticket size={36} className="text-white group-hover:scale-110 transition-transform sm:w-[42px] sm:h-[42px]" />
+          <div className="mb-4 sm:mb-6 transform -rotate-6 hover:rotate-0 transition-all duration-500 cursor-pointer group">
+            <img 
+              src={logo} 
+              alt="Raly Logo" 
+              className="w-20 h-20 sm:w-24 sm:h-24 object-contain drop-shadow-2xl group-hover:scale-110 transition-transform" 
+            />
           </div>
           <div className="text-center">
             <h1 className="text-3xl sm:text-4xl font-black uppercase italic text-slate-900 tracking-tighter leading-none">Raly Admin</h1>
             <div className="flex items-center justify-center gap-2 mt-2 sm:mt-3">
               <ShieldCheck size={14} className="text-[#E297C1]" />
-              <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] sm:tracking-[0.4em]">Secure Access Point</p>
+              <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] sm:tracking-[0.4em]">SECURE ACCESS POINT</p>
             </div>
           </div>
         </div>
@@ -103,7 +106,7 @@ const AdminLogin = () => {
         {/* Form */}
         <form onSubmit={handleLogin} className="space-y-4 sm:space-y-6">
           <div className="space-y-2 sm:space-y-3">
-            <label className="text-[9px] sm:text-[10px] font-black uppercase text-slate-400 ml-4 tracking-[0.2em]">Credential ID</label>
+            <label className="text-[9px] sm:text-[10px] font-black uppercase text-slate-400 ml-4 tracking-[0.2em]">CREDENTIAL ID</label>
             <div className="relative">
               <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
               <input 
@@ -118,7 +121,7 @@ const AdminLogin = () => {
           </div>
 
           <div className="space-y-2 sm:space-y-3">
-            <label className="text-[9px] sm:text-[10px] font-black uppercase text-slate-400 ml-4 tracking-[0.2em]">Access Key</label>
+            <label className="text-[9px] sm:text-[10px] font-black uppercase text-slate-400 ml-4 tracking-[0.2em]">ACCESS KEY</label>
             <div className="relative">
               <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
               <input 
@@ -151,14 +154,14 @@ const AdminLogin = () => {
             {isLoading ? (
               <Loader2 className="animate-spin" size={20} />
             ) : (
-              <>Authorize Session <ArrowRight size={18} /></>
+              <>AUTHORIZE SESSION <ArrowRight size={18} /></>
             )}
           </button>
         </form>
 
         <div className="mt-8 sm:mt-12 text-center border-t border-slate-50 pt-6 sm:pt-8">
           <p className="text-[8px] sm:text-[9px] font-black text-slate-300 uppercase tracking-[0.2em] sm:tracking-[0.3em]">
-            &copy; 2026 Raly Ticket System &bull; V.1.0
+            © 2026 RALY TICKET SYSTEM • V.1.0
           </p>
         </div>
       </div>

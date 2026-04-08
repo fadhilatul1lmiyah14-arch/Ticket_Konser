@@ -6,7 +6,7 @@ const api = axios.create({
    * Ini memungkinkan Frontend kamu (meskipun dijalankan di laptop lain atau HP) 
    * untuk tetap bisa menghubungi Backend di laptopmu.
    */
-  baseURL: 'https://didjvn-ip-182-8-195-136.tunnelmole.net', 
+  baseURL: 'https://6pfxyt-ip-182-8-195-136.tunnelmole.net', 
   headers: {
     'Content-Type': 'application/json',
   },

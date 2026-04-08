@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ShoppingCart, Instagram, Twitter, Facebook, Mail, User, LogOut, Search, X, Menu } from 'lucide-react';
-import logo from '../assets/logo.png'; 
+
+// PERBAIKAN: Menggunakan pendekatan string path agar Vite tidak memutus build jika file hilang
+// Jika logo.png ada di src/assets, Vite akan tetap meresolve-nya lewat URL statis
+const logo = new URL('../assets/logo.png', import.meta.url).href;
 
 const MainLayout = ({ children }) => {
   const navigate = useNavigate();
@@ -14,7 +17,11 @@ const MainLayout = ({ children }) => {
   const [navSearch, setNavSearch] = useState("");
   const [hasCartItems, setHasCartItems] = useState(false);
 
-  // --- LOGIKA SINKRONISASI USER DATA ---
+  // Fungsi pembantu untuk menangani jika gambar logo gagal dimuat
+  const handleImageError = (e) => {
+    e.target.style.opacity = '0'; // Menyembunyikan gambar secara halus jika gagal dimuat
+  };
+
   const syncUserData = useCallback(() => {
     const token = localStorage.getItem('userToken') || localStorage.getItem('token');
     const storedUser = localStorage.getItem('user'); 
@@ -36,14 +43,11 @@ const MainLayout = ({ children }) => {
     }
   }, []);
 
-  // --- LOGIKA UPDATE STATUS CART ---
   const updateCartStatus = useCallback(() => {
-    // Sesuaikan dengan key 'cart' yang digunakan di halaman Cart.jsx
     const cartData = localStorage.getItem('cart');
     if (cartData) {
       try {
         const parsed = JSON.parse(cartData);
-        // Jika parsed adalah array dan memiliki isi, atau object valid
         setHasCartItems(Array.isArray(parsed) ? parsed.length > 0 : !!parsed); 
       } catch (e) {
         setHasCartItems(false);
@@ -61,20 +65,17 @@ const MainLayout = ({ children }) => {
     updateCartStatus();
     setIsMobileMenuOpen(false); 
 
-    // Listeners untuk update reaktif
     window.addEventListener('cartUpdated', updateCartStatus);
-    window.addEventListener('storage', () => {
+    const handleStorageChange = () => {
         syncUserData();
         updateCartStatus();
-    });
+    };
+    window.addEventListener('storage', handleStorageChange);
     window.addEventListener('profileUpdated', syncUserData);
 
     return () => {
       window.removeEventListener('cartUpdated', updateCartStatus);
-      window.removeEventListener('storage', () => {
-        syncUserData();
-        updateCartStatus();
-      });
+      window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('profileUpdated', syncUserData);
     };
   }, [location.pathname, syncUserData, updateCartStatus]);
@@ -126,17 +127,20 @@ const MainLayout = ({ children }) => {
     <div className="bg-[#0f172a] min-h-screen font-sans text-white flex flex-col text-left overflow-x-hidden">
       <nav className="bg-[#0f172a]/95 backdrop-blur-md border-b border-slate-800 px-4 md:px-8 py-4 flex justify-between items-center fixed top-0 left-0 right-0 z-50 h-[73px]">
         
-        {/* LEFT: LOGO */}
         <Link to="/" className="flex items-center gap-2 md:gap-3 group min-w-fit">
           <div className="group-hover:scale-110 transition-transform duration-300">
-            <img src={logo} alt="Raly Ticket Logo" className="h-8 md:h-10 w-auto object-contain" />
+            <img 
+              src={logo} 
+              alt="Logo" 
+              className="h-8 md:h-10 w-auto object-contain" 
+              onError={handleImageError}
+            />
           </div>
           <h1 className="text-lg md:text-2xl font-black tracking-tighter uppercase italic text-white leading-none">
             Raly Ticket
           </h1>
         </Link>
 
-        {/* CENTER: SEARCH */}
         <div className="hidden lg:flex flex-1 justify-center max-w-md mx-8">
           <form onSubmit={handleSearchSubmit} className="relative w-full group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-purple-500 transition-colors" size={18} />
@@ -155,14 +159,12 @@ const MainLayout = ({ children }) => {
           </form>
         </div>
 
-        {/* RIGHT: ACTIONS */}
         <div className="flex items-center gap-3 md:gap-6">
           <div className="hidden md:flex items-center gap-6 text-[11px] font-black uppercase tracking-[0.2em]">
             <Link to="/" className={`transition ${location.pathname === '/' ? 'text-purple-400' : 'text-white hover:text-purple-400'}`}>Home</Link>
             <Link to="/events" className={`transition ${location.pathname === '/events' ? 'text-purple-400' : 'text-white hover:text-purple-400'}`}>Events</Link>
           </div>
           
-          {/* CART WITH BADGE */}
           <Link to="/cart" className="relative text-white group p-2">
             <ShoppingCart size={22} className="cursor-pointer group-hover:text-purple-400 transition" />
             {hasCartItems && (
@@ -223,7 +225,6 @@ const MainLayout = ({ children }) => {
         </div>
       </nav>
 
-      {/* --- MOBILE OVERLAY --- */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 top-[73px] bg-[#0f172a] z-[49] animate-in slide-in-from-right duration-300 md:hidden flex flex-col p-6 gap-8">
           <form onSubmit={handleSearchSubmit} className="relative group">
@@ -251,13 +252,17 @@ const MainLayout = ({ children }) => {
         {children}
       </main>
 
-      {/* --- FOOTER --- */}
       <footer className="w-full bg-white border-t border-slate-200 pt-16 pb-8 mt-20 font-sans text-slate-900">
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-12 mb-12">
             <div className="col-span-1">
               <div className="flex items-center gap-3 mb-4">
-                <img src={logo} alt="Raly Ticket Logo" className="h-8 w-auto object-contain" />
+                <img 
+                  src={logo} 
+                  alt="Logo" 
+                  className="h-8 w-auto object-contain" 
+                  onError={handleImageError}
+                />
                 <span className="font-black uppercase tracking-tighter text-slate-900 text-lg md:text-xl">
                   Raly Ticket
                 </span>
