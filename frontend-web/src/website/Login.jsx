@@ -1,15 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Mail, Lock, Loader2, Eye, EyeOff, Languages } from 'lucide-react';
+import { Mail, Lock, Loader2, Eye, EyeOff } from 'lucide-react';
 import api from '../api/axiosConfig'; 
-// Pastikan path ini benar sesuai struktur folder kamu
 import logo from '../assets/logo.png'; 
 
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Langsung set default ke 'id' agar otomatis Bahasa Indonesia saat dibuka
   const [lang, setLang] = useState('id'); 
   const [email, setEmail] = useState(location.state?.registeredEmail || '');
   const [password, setPassword] = useState('');
@@ -58,36 +56,40 @@ const Login = () => {
     setError('');
 
     try {
+      // 1. Kirim request ke endpoint customer
       const response = await api.post('/auth/login/customer', {
         email: email,
         password: password
       });
 
-      // Sesuaikan dengan struktur response API kamu
-      const { accessToken, token, user } = response.data;
-      const finalToken = accessToken || token;
+      // 2. BACKEND kirim { status, accessToken, user, message }
+      const { accessToken, user, status } = response.data;
 
-      if (token && userData) {
-        localStorage.setItem('userToken', token); 
-        localStorage.setItem('token', token);      
-        localStorage.setItem('userId', userData.id);
-        localStorage.setItem('user', JSON.stringify(userData));
+      if (status === "success" && accessToken) {
+        // 3. Simpan token (gunakan nama yang konsisten 'token')
+        localStorage.setItem('token', accessToken);      
+        localStorage.setItem('user', JSON.stringify(user));
+        
+        // 4. Redirect ke home
         navigate('/'); 
+        window.location.reload(); // Opsional: Memastikan state navbar terupdate
       } else {
         setError(getTranslation('errServer'));
       }
 
     } catch (err) {
       console.error("Login Error:", err);
-      setError(err.response?.data?.message || getTranslation('errAuth'));
+      // Mengambil pesan error dari backend jika ada
+      const errorMessage = err.response?.data?.error || getTranslation('errAuth');
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-slate-100 p-4 sm:p-6 font-sans">
-      <div className="flex flex-col md:flex-row w-full max-w-4xl bg-white rounded-[40px] md:rounded-[50px] shadow-2xl overflow-hidden border border-slate-100 animate-in fade-in zoom-in duration-500 text-left relative">
+    <div className="min-h-screen w-full flex items-center justify-center bg-slate-100 p-4 sm:p-6 font-sans text-left">
+      <div className="flex flex-col md:flex-row w-full max-w-4xl bg-white rounded-[40px] md:rounded-[50px] shadow-2xl overflow-hidden border border-slate-100 animate-in fade-in zoom-in duration-500 relative">
         
         {/* SISI KIRI: FORMULIR */}
         <div className="flex-1 p-8 sm:p-10 md:p-14 flex flex-col justify-center bg-white order-1 relative">
@@ -97,15 +99,11 @@ const Login = () => {
             <button 
               onClick={() => setLang('id')}
               className={`px-3 py-1 text-[10px] font-black rounded-lg transition-all ${lang === 'id' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-slate-600'}`}
-            >
-              ID
-            </button>
+            >ID</button>
             <button 
               onClick={() => setLang('en')}
               className={`px-3 py-1 text-[10px] font-black rounded-lg transition-all ${lang === 'en' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-slate-600'}`}
-            >
-              EN
-            </button>
+            >EN</button>
           </div>
 
           <div className="flex items-center gap-2 mb-10">
@@ -113,14 +111,12 @@ const Login = () => {
             <span className="font-black uppercase tracking-tighter text-slate-900 text-xl">Raly Ticket</span>
           </div>
 
-          <div>
-            <h2 className="text-4xl sm:text-5xl font-black text-purple-600 mb-2 italic uppercase leading-none">
-              {getTranslation('signInTitle')}
-            </h2>
-            <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mb-10">
-              {getTranslation('access')}
-            </p>
-          </div>
+          <h2 className="text-4xl sm:text-5xl font-black text-purple-600 mb-2 italic uppercase leading-none">
+            {getTranslation('signInTitle')}
+          </h2>
+          <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mb-10">
+            {getTranslation('access')}
+          </p>
 
           {error && (
             <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-600 text-[10px] font-black uppercase tracking-widest">
@@ -137,7 +133,7 @@ const Login = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full border-2 border-slate-900 rounded-2xl py-3.5 px-12 outline-none focus:border-purple-600 font-bold transition-all text-slate-900 text-sm sm:text-base" 
+                className="w-full border-2 border-slate-900 rounded-2xl py-3.5 px-12 outline-none focus:border-purple-600 font-bold transition-all text-slate-900 text-sm" 
               />
             </div>
             <div className="relative">
@@ -148,7 +144,7 @@ const Login = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full border-2 border-slate-900 rounded-2xl py-3.5 px-12 outline-none focus:border-purple-600 font-bold transition-all text-slate-900 text-sm sm:text-base" 
+                className="w-full border-2 border-slate-900 rounded-2xl py-3.5 px-12 outline-none focus:border-purple-600 font-bold transition-all text-slate-900 text-sm" 
               />
               <button 
                 type="button"
@@ -160,9 +156,9 @@ const Login = () => {
             </div>
             
             <div className="flex justify-end pt-1">
-                <span className="text-[10px] font-black text-purple-600 uppercase cursor-pointer hover:underline tracking-widest">
-                  {getTranslation('forgot')}
-                </span>
+              <span className="text-[10px] font-black text-purple-600 uppercase cursor-pointer hover:underline tracking-widest">
+                {getTranslation('forgot')}
+              </span>
             </div>
 
             <button 
@@ -175,14 +171,10 @@ const Login = () => {
           </form>
 
           <div className="mt-10 text-center">
-            <p className="text-[10px] font-black text-slate-400 mb-4 uppercase tracking-widest">
-              {getTranslation('orSign')}
-            </p>
+            <p className="text-[10px] font-black text-slate-400 mb-4 uppercase tracking-widest">{getTranslation('orSign')}</p>
             <button className="w-full border-2 border-slate-900 py-3.5 rounded-2xl flex items-center justify-center gap-3 font-black hover:bg-slate-50 transition active:scale-95">
               <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/auth_service_google.svg" className="w-5 h-5" alt="Google" />
-              <span className="text-xs font-black uppercase tracking-wider">
-                {getTranslation('googleSign')}
-              </span>
+              <span className="text-xs font-black uppercase tracking-wider">{getTranslation('googleSign')}</span>
             </button>
           </div>
         </div>
@@ -193,12 +185,8 @@ const Login = () => {
           <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-48 h-48 bg-purple-800 rounded-full opacity-30"></div>
           
           <div className="relative z-10">
-            <h2 className="text-3xl sm:text-4xl font-black mb-4 italic uppercase leading-tight">
-              {getTranslation('newHere')}
-            </h2>
-            <p className="text-sm font-medium mb-10 leading-relaxed opacity-90 max-w-[250px] mx-auto">
-              {getTranslation('descNew')}
-            </p>
+            <h2 className="text-3xl sm:text-4xl font-black mb-4 italic uppercase leading-tight">{getTranslation('newHere')}</h2>
+            <p className="text-sm font-medium mb-10 leading-relaxed opacity-90 max-w-[250px] mx-auto">{getTranslation('descNew')}</p>
             <button 
               onClick={() => navigate('/register')} 
               className="border-2 border-white px-12 py-3.5 rounded-full font-black uppercase tracking-widest hover:bg-white hover:text-purple-700 transition-all active:scale-95 text-[11px]"
