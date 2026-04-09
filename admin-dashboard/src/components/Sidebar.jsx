@@ -10,21 +10,20 @@ import {
   Ticket 
 } from 'lucide-react';
 
+// Import logo dari folder assets
+import LogoImg from '../assets/logo.png';
+
 const Sidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   
-  // State untuk Collapse/Expand Sidebar (Desktop)
   const [isExpanded, setIsExpanded] = useState(true);
-  // State tambahan untuk mobile toggle
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
-  // Menutup sidebar otomatis saat navigasi di mobile agar konten kelihatan
   useEffect(() => {
     setIsMobileOpen(false);
   }, [location.pathname]);
 
-  // Efek untuk menangani ukuran layar otomatis
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth < 1024) {
@@ -36,31 +35,11 @@ const Sidebar = () => {
   }, []);
 
   const menus = [
-    { 
-      name: 'Dashboard', 
-      path: '/admin/dashboard', 
-      icon: <LayoutDashboard size={20}/> 
-    },
-    { 
-      name: 'Manage Concert', 
-      path: '/admin/manage-concert', 
-      icon: <Music size={20}/> 
-    },
-    { 
-      name: 'Manage Ticket', 
-      path: '/admin/tickets', 
-      icon: <Ticket size={20}/> 
-    },
-    { 
-      name: 'Order History', 
-      path: '/admin/orders', 
-      icon: <History size={20}/> 
-    },
-    { 
-      name: 'Master Data', 
-      path: '/admin/master-data', 
-      icon: <Database size={20}/> 
-    },
+    { name: 'Dashboard', path: '/admin/dashboard', icon: <LayoutDashboard size={20}/> },
+    { name: 'Manage Concert', path: '/admin/manage-concert', icon: <Music size={20}/> },
+    { name: 'Manage Ticket', path: '/admin/tickets', icon: <Ticket size={20}/> },
+    { name: 'Order History', path: '/admin/orders', icon: <History size={20}/> },
+    { name: 'Master Data', path: '/admin/master-data', icon: <Database size={20}/> },
   ];
 
   const isActive = (path) => {
@@ -69,7 +48,7 @@ const Sidebar = () => {
 
   return (
     <>
-      {/* MOBILE TRIGGER - Menyesuaikan dengan Navbar di gambar */}
+      {/* MOBILE TRIGGER */}
       <div className="lg:hidden fixed top-5 left-4 z-[70]">
         <button 
           onClick={() => setIsMobileOpen(!isMobileOpen)}
@@ -79,7 +58,7 @@ const Sidebar = () => {
         </button>
       </div>
 
-      {/* MOBILE OVERLAY - Agar konten di belakang tidak bisa diinteraksi saat menu buka */}
+      {/* MOBILE OVERLAY */}
       {isMobileOpen && (
         <div 
           className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[65] animate-in fade-in duration-300"
@@ -95,14 +74,20 @@ const Sidebar = () => {
         `}
       >
         
-        {/* Brand Logo & Toggle Button */}
-        <div className={`flex items-center mb-10 mt-14 lg:mt-0 ${isExpanded ? 'justify-between px-2' : 'justify-center'}`}>
+        {/* Brand Logo & Toggle Button Area */}
+        <div className={`flex items-center mb-10 mt-14 lg:mt-0 w-full ${isExpanded ? 'justify-between px-2' : 'justify-center'}`}>
+          
+          {/* Logo hanya muncul jika isExpanded TRUE */}
           {isExpanded && (
-            <div className="flex items-center gap-3 animate-in fade-in duration-500">
-              <div className="w-9 h-9 bg-[#E297C1] rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(226,151,193,0.3)] transform rotate-6 hover:rotate-0 transition-transform shrink-0">
-                <Music size={20} className="text-white" />
+            <div className="flex items-center gap-3 animate-in fade-in zoom-in duration-500 overflow-hidden">
+              <div className="w-9 h-9 flex items-center justify-center shrink-0">
+                <img 
+                  src={LogoImg} 
+                  alt="Logo" 
+                  className="w-full h-full object-contain"
+                />
               </div>
-              <div className="overflow-hidden">
+              <div className="flex flex-col">
                 <h1 className="text-sm font-black text-white italic tracking-tighter uppercase leading-none whitespace-nowrap">
                   Raly <span className="text-[#E297C1]">Admin</span>
                 </h1>
@@ -111,10 +96,10 @@ const Sidebar = () => {
             </div>
           )}
           
-          {/* Toggle Button Desktop */}
+          {/* Tombol Toggle tetap muncul untuk mengontrol Sidebar */}
           <button 
             onClick={() => setIsExpanded(!isExpanded)}
-            className="hidden lg:block p-2 rounded-xl bg-white/5 text-white hover:bg-[#E297C1] transition-all duration-300"
+            className={`p-2 rounded-xl bg-white/5 text-white hover:bg-[#E297C1] transition-all duration-300 ${!isExpanded ? 'mt-2' : ''}`}
           >
             {isExpanded ? <X size={18} /> : <Menu size={18} />}
           </button>
@@ -123,7 +108,9 @@ const Sidebar = () => {
         {/* Navigation Links */}
         <nav className="flex-1 space-y-2 pr-1 custom-scrollbar overflow-y-auto w-full">
           {isExpanded && (
-            <p className="px-4 text-[9px] font-black text-white/20 uppercase tracking-[0.4em] mb-4">Main Navigation</p>
+            <p className="px-4 text-[9px] font-black text-white/20 uppercase tracking-[0.4em] mb-4 animate-in fade-in duration-700">
+              Main Navigation
+            </p>
           )}
           
           {menus.map((item) => {
@@ -140,12 +127,11 @@ const Sidebar = () => {
                     : 'text-white/40 hover:bg-white/5 hover:text-white'
                 }`}
               >
-                {/* Active Indicator */}
                 {active && isExpanded && (
                   <div className="absolute left-0 w-1.5 h-6 bg-white rounded-r-full" />
                 )}
                 
-                <div className={`transition-all duration-500 shrink-0 ${active ? 'scale-110' : 'group-hover:scale-110 group-hover:rotate-6'}`}>
+                <div className={`transition-all duration-500 shrink-0 ${active ? 'scale-110' : 'group-hover:scale-110'}`}>
                   {item.icon}
                 </div>
                 
@@ -155,7 +141,6 @@ const Sidebar = () => {
                   </span>
                 )}
 
-                {/* Tooltip Desktop Only */}
                 {!isExpanded && (
                    <div className="hidden lg:block absolute left-16 bg-[#E297C1] text-white text-[10px] font-black px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-all translate-x-2 group-hover:translate-x-0 z-50 uppercase tracking-widest whitespace-nowrap shadow-xl">
                       {item.name}

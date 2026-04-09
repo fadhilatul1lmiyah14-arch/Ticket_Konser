@@ -168,48 +168,85 @@ const AddConcert = () => {
     }
   };
 
-  // --- TRANSLATION ENGINE ---
   const handleAutoTranslate = async () => {
-    if (!formData.title.id && descriptions.id[0] === '') {
-      alert("Isi konten Bahasa Indonesia terlebih dahulu!");
-      return;
-    }
+  // 1. Cek apakah konten ID ada
+  const hasContent = formData.title.id.trim() !== "" || 
+                     descriptions.id.some(d => d && d !== "<p><br></p>");
 
-    setIsTranslating(true);
-    try {
-      const translateText = async (text) => {
-        if (!text || text === "<p><br></p>") return text;
-        const cleanText = text.replace(/<\/?[^>]+(>|$)/g, ""); 
-        const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=id&tl=en&dt=t&q=${encodeURIComponent(cleanText)}`);
-        const data = await res.json();
-        return data[0].map(item => item[0]).join("");
-      };
+  if (!hasContent) {
+    alert("Isi konten Bahasa Indonesia terlebih dahulu!");
+    return;
+  }
 
-      // Translate Title
-      const transTitle = await translateText(formData.title.id);
+  setIsTranslating(true);
+
+  try {
+    // Fungsi pembantu untuk translate teks murni saja
+    const translateRawText = async (text) => {
+      if (!text || text.trim() === "") return "";
       
-      // Translate Descriptions
-      const transDescs = await Promise.all(
-        descriptions.id.map(async (d) => await translateText(d))
-      );
+      // Bersihkan karakter khusus yang bisa merusak URL
+      const encodedText = encodeURIComponent(text);
+      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=id&tl=en&dt=t&q=${encodedText}`;
+      
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Google API Limit/Error");
+      
+      const data = await res.json();
+      // Gabungkan hasil (karena Google memecah per kalimat dalam array)
+      return data[0].map(item => item[0]).join("");
+    };
 
-      // Translate Terms
-      const transTerms = await Promise.all(
-        termsList.id.map(async (t) => await translateText(t))
-      );
+    // Fungsi untuk memproses HTML dari ReactQuill
+    const processQuillContent = async (html) => {
+      if (!html || html === "<p><br></p>") return "<p><br></p>";
+      
+      // Gunakan DOMParser untuk mengambil teks murni tanpa tag HTML
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const plainText = doc.body.innerText || doc.body.textContent;
+      
+      if (!plainText.trim()) return html;
 
-      setFormData(prev => ({ ...prev, title: { ...prev.title, en: transTitle } }));
-      setDescriptions(prev => ({ ...prev, en: transDescs }));
-      setTermsList(prev => ({ ...prev, en: transTerms }));
+      const translatedText = await translateRawText(plainText);
+      
+      // Bungkus kembali ke tag paragraf agar ReactQuill mengenalinya
+      return `<p>${translatedText.replace(/\n/g, "</p><p>")}</p>`;
+    };
 
-      setActiveLang('en');
-    } catch (error) {
-      console.error("Translation Error:", error);
-      alert("Gagal menerjemahkan otomatis.");
-    } finally {
-      setIsTranslating(false);
-    }
-  };
+    // --- EKSEKUSI TRANSLATE ---
+
+    // 1. Translate Title (Ambil teks murni saja)
+    const titleIdClean = formData.title.id.replace(/<\/?[^>]+(>|$)/g, "");
+    const transTitle = await translateRawText(titleIdClean);
+
+    // 2. Translate Descriptions (Array)
+    const transDescs = await Promise.all(
+      descriptions.id.map(async (content) => await processQuillContent(content))
+    );
+
+    // 3. Translate Terms (Array)
+    const transTerms = await Promise.all(
+      termsList.id.map(async (term) => await translateRawText(term))
+    );
+
+    // Update States
+    setFormData(prev => ({
+      ...prev,
+      title: { ...prev.title, en: transTitle }
+    }));
+    setDescriptions(prev => ({ ...prev, en: transDescs }));
+    setTermsList(prev => ({ ...prev, en: transTerms }));
+
+    setActiveLang('en');
+    alert("✅ Berhasil menerjemahkan ke Bahasa Inggris!");
+
+  } catch (error) {
+    console.error("Translation Error:", error);
+    alert("Gagal translasi otomatis. Pastikan koneksi internet stabil atau teks tidak terlalu panjang.");
+  } finally {
+    setIsTranslating(false);
+  }
+};
 
   const addDescriptionBlock = () => {
     setDescriptions(prev => ({
@@ -276,56 +313,76 @@ const AddConcert = () => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (imageUrls.length === 0) {
-      alert("Harap masukkan minimal satu URL gambar!");
-      return;
-    }
+  e.preventDefault();
 
-    setLoading(true);
-    try {
-      const payload = {
-        title: formData.title, // Object {id, en}
-        category_id: Number(formData.category_id),
-        location_id: Number(formData.location_id),
-        address_details: formData.address_details,
-        description: {
-            id: descriptions.id.filter(d => d.trim() !== "" && d !== "<p><br></p>"),
-            en: descriptions.en.filter(d => d.trim() !== "" && d !== "<p><br></p>")
-        },
-        terms_conditions: {
-            id: termsList.id.join('\n'),
-            en: termsList.en.join('\n')
-        }, 
-        event_date: formData.event_date,
-        start_time: formData.start_time,
-        status: formData.status, 
-        images: imageUrls,
-        casts: casts,
-        ticket_types: ticketTiers.map(t => ({
-          name: t.name,
-          price: Number(t.price),
-          quota: Number(t.quota) 
-        }))
-      };
+  // Validasi Dasar
+  if (imageUrls.length === 0) {
+    alert("Harap masukkan minimal satu URL gambar!");
+    return;
+  }
 
-      await api.post('/admin/events', payload);
-      alert("✅ Event & Tiket Berhasil Disimpan!");
-      navigate('/admin/manage-concert'); 
-    } catch (error) {
-      if (error.response && error.response.status === 422) {
-        const errorData = error.response.data.errors;
-        const errorMessage = typeof errorData === 'object' 
-          ? Object.values(errorData).flat()[0] 
-          : "Data tidak valid";
-        alert(`Gagal Validasi: ${errorMessage}`);
-      } else {
-        alert("Gagal: " + (error.response?.data?.message || "Terjadi kesalahan koneksi/server"));
-      }
-    } finally {
-      setLoading(false);
+  // Validasi Input Wajib (Tambahan agar tidak kena 422 di backend)
+  if (!formData.category_id || !formData.location_id) {
+    alert("Kategori dan Lokasi harus dipilih!");
+    return;
+  }
+
+  setLoading(true);
+  try {
+    const payload = {
+      // 1. Title harus jadi String (JSON) agar lolos validasi t.String() di Elysia
+      title: JSON.stringify(formData.title), 
+
+      category_id: Number(formData.category_id),
+      location_id: Number(formData.location_id),
+      address_details: formData.address_details || "",
+
+      // 2. Description (Sudah benar berupa object, tapi di backend kamu ada t.Any())
+      // Kita kirim sebagai object, nanti di backend di-stringify otomatis oleh logic kamu
+      description: {
+        id: descriptions.id.filter(d => d.trim() !== "" && d !== "<p><br></p>"),
+        en: descriptions.en.filter(d => d.trim() !== "" && d !== "<p><br></p>")
+      },
+
+      // 3. Terms Conditions harus jadi String (JSON) karena di Backend tipenya t.String()
+      terms_conditions: JSON.stringify({
+        id: termsList.id.join('\n'),
+        en: termsList.en.length > 0 ? termsList.en.join('\n') : ""
+      }),
+
+      event_date: formData.event_date,
+      start_time: formData.start_time,
+      status: formData.status,
+      images: imageUrls,
+      casts: casts,
+      ticket_types: ticketTiers.map(t => ({
+        name: t.name,
+        price: Number(t.price),
+        quota: Number(t.quota),
+        description: "" // Tambahkan default agar sesuai skema backend
+      }))
+    };
+
+    console.log("Sending Payload:", payload); // Cek console untuk memastikan struktur
+
+    await api.post('/admin/events', payload);
+    alert("✅ Event & Tiket Berhasil Disimpan!");
+    navigate('/admin/manage-concert'); 
+
+  } catch (error) {
+    console.error("Submit Error:", error.response?.data);
+    if (error.response && error.response.status === 422) {
+      // Menampilkan detail error validasi dari Elysia
+      const errorDetail = error.response.data;
+      alert(`Gagal Validasi: ${JSON.stringify(errorDetail)}`);
+    } else {
+      alert("Gagal: " + (error.response?.data?.message || "Terjadi kesalahan koneksi/server"));
     }
-  };
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <form onSubmit={handleSubmit} className="max-w-7xl mx-auto pb-20 px-4 sm:px-6 lg:px-8 bg-white text-left animate-in fade-in slide-in-from-bottom-4 duration-700">

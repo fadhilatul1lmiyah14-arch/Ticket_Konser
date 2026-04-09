@@ -97,19 +97,29 @@ const EditConcert = () => {
   ];
 
   // Helper function for Google Translate API
-  const translateText = async (text, from = 'id', to = 'en') => {
-    if (!text || text === '<p><br></p>') return text;
-    try {
-      const res = await fetch(
-        `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${from}&tl=${to}&dt=t&q=${encodeURIComponent(text)}`
-      );
-      const data = await res.json();
-      return data[0].map(item => item[0]).join('');
-    } catch (error) {
-      console.error("Translation error:", error);
-      return text;
-    }
-  };
+  const translateText = async (htmlOrText, from = 'id', to = 'en') => {
+  if (!htmlOrText || htmlOrText === '<p><br></p>') return htmlOrText;
+  
+  try {
+    // 1. Ekstrak teks murni (buang tag HTML agar tidak mengacaukan API Google)
+    const doc = new DOMParser().parseFromString(htmlOrText, 'text/html');
+    const plainText = doc.body.innerText || doc.body.textContent;
+
+    if (!plainText.trim()) return htmlOrText;
+
+    const res = await fetch(
+      `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${from}&tl=${to}&dt=t&q=${encodeURIComponent(plainText)}`
+    );
+    const data = await res.json();
+    const translatedText = data[0].map(item => item[0]).join('');
+
+    // 2. Jika input aslinya mengandung HTML, bungkus kembali ke tag <p>
+    return htmlOrText.includes('<') ? `<p>${translatedText}</p>` : translatedText;
+  } catch (error) {
+    console.error("Translation error:", error);
+    return htmlOrText;
+  }
+};
 
   const handleAutoTranslateAll = async () => {
     setIsTranslating(true);
@@ -145,88 +155,74 @@ const EditConcert = () => {
   };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [catRes, locRes, eventRes] = await Promise.all([
-          api.get('/admin/categories'),
-          api.get('/admin/locations'),
-          api.get(`/admin/events/${id}`)
-        ]);
+  const fetchData = async () => {
+    try {
+      const [catRes, locRes, eventRes] = await Promise.all([
+        api.get('/admin/categories'),
+        api.get('/admin/locations'),
+        api.get(`/admin/events/${id}`)
+      ]);
 
-        setCategories(catRes.data?.data || []);
-        setLocations(locRes.data?.data || []);
-        
-        const event = eventRes.data?.data || eventRes.data;
-        
-        // Parse Title and Language Fields
-        const parseMultiLang = (val) => {
-          try {
-            const parsed = typeof val === 'string' ? JSON.parse(val) : val;
-            return { id: parsed?.id || val || '', en: parsed?.en || val || '' };
-          } catch (e) {
-            return { id: val || '', en: val || '' };
-          }
-        };
+      setCategories(catRes.data?.data || []);
+      setLocations(locRes.data?.data || []);
+      
+      const event = eventRes.data?.data || eventRes.data;
+      
+      // Helper untuk parsing JSON yang aman
+      const safeParse = (val, fallback) => {
+        try {
+          if (!val) return fallback;
+          return typeof val === 'string' ? JSON.parse(val) : val;
+        } catch (e) { return fallback; }
+      };
 
-        setFormData({
-          title: parseMultiLang(event.title),
-          event_date: event.event_date || '',
-          start_time: event.start_time?.substring(0, 5) || '',
-          category_id: event.category_id || '',
-          location_id: event.location_id || '',
-          address_details: event.address_details || '',
-          latitude: event.latitude ? parseFloat(event.latitude) : -6.200000,
-          longitude: event.longitude ? parseFloat(event.longitude) : 106.816666,
-          status: event.status === 'PUBLISH' ? 'PUBLISHED' : (event.status || 'DRAFT')
-        });
+      // 1. Sync Title
+      const titleObj = safeParse(event.title, { id: event.title || '', en: event.title || '' });
+      
+      setFormData({
+        title: titleObj,
+        event_date: event.event_date || '',
+        start_time: event.start_time?.substring(0, 5) || '',
+        category_id: event.category_id || '',
+        location_id: event.location_id || '',
+        address_details: event.address_details || '',
+        latitude: event.latitude ? parseFloat(event.latitude) : -6.200000,
+        longitude: event.longitude ? parseFloat(event.longitude) : 106.816666,
+        status: event.status === 'PUBLISH' ? 'PUBLISHED' : (event.status || 'DRAFT')
+      });
 
-        // Descriptions
-        if (event.description) {
-          try {
-            const parsed = typeof event.description === 'string' ? JSON.parse(event.description) : event.description;
-            if (Array.isArray(parsed)) {
-              setDescriptions(parsed.map(d => parseMultiLang(d)));
-            } else {
-              setDescriptions([parseMultiLang(event.description)]);
-            }
-          } catch (e) {
-            setDescriptions([parseMultiLang(event.description)]);
-          }
-        }
-
-        setImageUrls(Array.isArray(event.images) ? event.images : []);
-        setCasts(Array.isArray(event.casts) ? event.casts : []);
-        
-        if (event.ticket_types?.length > 0) {
-          setTicketTiers(event.ticket_types.map(t => ({
-            name: t.name,
-            price: (t.price || 0).toString(),
-            quota: (t.quota || 0).toString() 
-          })));
-        } else {
-          setTicketTiers([{ name: 'REGULAR', price: '', quota: '' }]);
-        }
-        
-        // Terms List
-        if (event.terms_conditions) {
-          try {
-            const parsedTerms = JSON.parse(event.terms_conditions);
-            setTermsList(Array.isArray(parsedTerms) ? parsedTerms : []);
-          } catch (e) {
-            const legacyTerms = event.terms_conditions.split('\n').filter(t => t.trim() !== "");
-            setTermsList(legacyTerms.map(t => ({ id: t, en: t })));
-          }
-        }
-
-      } catch (error) {
-        console.error("Error loading data:", error);
-      } finally {
-        setLoading(false);
+      // 2. Sync Descriptions (Harus Array of Objects)
+      const descData = safeParse(event.description, []);
+      if (Array.isArray(descData)) {
+        setDescriptions(descData.length > 0 ? descData : [{ id: '', en: '' }]);
+      } else {
+        setDescriptions([{ id: event.description, en: event.description }]);
       }
-    };
 
-    fetchData();
-  }, [id]);
+      // 3. Sync Terms (Harus Array of Objects)
+      const termsData = safeParse(event.terms_conditions, []);
+      setTermsList(Array.isArray(termsData) ? termsData : []);
+
+      // 4. Sync Other fields
+      setImageUrls(Array.isArray(event.images) ? event.images : []);
+      setCasts(Array.isArray(event.casts) ? event.casts : []);
+      
+      if (event.ticket_types?.length > 0) {
+        setTicketTiers(event.ticket_types.map(t => ({
+          name: t.name,
+          price: (t.price || 0).toString(),
+          quota: (t.quota || 0).toString() 
+        })));
+      }
+
+    } catch (error) {
+      console.error("Error loading data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  fetchData();
+}, [id]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -297,41 +293,46 @@ const EditConcert = () => {
   };
 
   const handleUpdate = async (e) => {
-    e.preventDefault();
-    if (imageUrls.length === 0) return alert("Harap masukkan minimal satu URL gambar!");
+  e.preventDefault();
+  if (imageUrls.length === 0) return alert("Harap masukkan minimal satu URL gambar!");
 
-    setIsUpdating(true);
-    try {
-      const payload = {
-        title: JSON.stringify(formData.title),
-        category_id: Number(formData.category_id),
-        location_id: Number(formData.location_id),
-        address_details: formData.address_details,
-        latitude: formData.latitude,
-        longitude: formData.longitude,
-        description: JSON.stringify(descriptions),
-        terms_conditions: JSON.stringify(termsList), 
-        event_date: formData.event_date,
-        start_time: formData.start_time,
-        status: formData.status === 'PUBLISHED' ? 'PUBLISH' : formData.status, 
-        images: imageUrls,
-        casts: casts,
-        ticket_types: ticketTiers.map(t => ({
-          name: t.name,
-          price: Number(t.price),
-          quota: Number(t.quota) 
-        }))
-      };
+  setIsUpdating(true);
+  try {
+    const payload = {
+      // Dibungkus JSON.stringify agar di DB tersimpan sebagai string JSON
+      title: JSON.stringify(formData.title),
+      category_id: Number(formData.category_id),
+      location_id: Number(formData.location_id),
+      address_details: formData.address_details,
+      latitude: formData.latitude,
+      longitude: formData.longitude,
+      
+      // Kirim array object langsung, backend kamu sudah ada logic JSON.stringify untuk ini
+      description: descriptions.filter(d => d.id.trim() !== ""), 
+      terms_conditions: JSON.stringify(termsList), 
+      
+      event_date: formData.event_date,
+      start_time: formData.start_time,
+      status: formData.status === 'PUBLISHED' ? 'PUBLISHED' : 'DRAFT', 
+      images: imageUrls,
+      casts: casts,
+      ticket_types: ticketTiers.map(t => ({
+        name: t.name,
+        price: Number(t.price),
+        quota: Number(t.quota),
+        description: "" // Tambahkan default agar skema backend terpenuhi
+      }))
+    };
 
-      await api.put(`/admin/events/${id}`, payload);
-      alert("✅ Konser Berhasil Diperbarui!");
-      navigate('/admin/manage-concert'); 
-    } catch (error) {
-      alert(error.response?.data?.message || "Gagal memperbarui data.");
-    } finally {
-      setIsUpdating(false);
-    }
-  };
+    await api.put(`/admin/events/${id}`, payload);
+    alert("✅ Konser Berhasil Diperbarui!");
+    navigate('/admin/manage-concert'); 
+  } catch (error) {
+    alert(error.response?.data?.message || "Gagal memperbarui data.");
+  } finally {
+    setIsUpdating(false);
+  }
+};
 
   if (loading) {
     return (
