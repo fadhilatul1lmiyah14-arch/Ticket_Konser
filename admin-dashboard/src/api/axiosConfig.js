@@ -2,11 +2,11 @@ import axios from 'axios';
 
 const api = axios.create({
   /**
-   * baseURL sekarang menggunakan URL publik dari Tunnelmole.
-   * Ini memungkinkan Frontend kamu (meskipun dijalankan di laptop lain atau HP) 
-   * untuk tetap bisa menghubungi Backend di laptopmu.
+   * baseURL sekarang mengambil nilai dari file .env.
+   * Jika sedang development, ia akan mengambil VITE_BACKEND_URL.
+   * Pastikan URL di .env diawali dengan http:// atau https://
    */
-  baseURL: 'http://evvwt3-ip-182-8-211-179.tunnelmole.net', 
+  baseURL: import.meta.env.VITE_BACKEND_URL, 
   headers: {
     'Content-Type': 'application/json',
   },
@@ -19,7 +19,7 @@ const api = axios.create({
  */
 api.interceptors.request.use(
   (config) => {
-    // Ambil token admin (sesuaikan key-nya, misal 'adminToken')
+    // Ambil token admin
     const token = localStorage.getItem('adminToken');
     
     if (token) {
@@ -43,14 +43,16 @@ api.interceptors.response.use(
   (error) => {
     // Jika server merespons 401 (Unauthorized), paksa logout
     if (error.response && error.response.status === 401) {
-      console.error("Sesi berakhir. Silakan login kembali.");
-      localStorage.removeItem('adminToken'); // Hapus token saja
-      window.location.href = '/login'; 
+      console.error("Sesi berakhir atau tidak sah. Silakan login kembali.");
+      localStorage.removeItem('adminToken'); // Hapus token
+      
+      // Gunakan replace agar user tidak bisa klik 'back' ke halaman admin
+      window.location.replace('/login'); 
     }
     
-    // Opsional: Menangani error jaringan
+    // Menangani error jaringan (misal: Backend mati atau IP salah)
     if (!error.response) {
-      console.error("Koneksi ke API gagal. Pastikan Tunnelmole & Backend menyala!");
+      console.error("Koneksi ke API gagal. Periksa apakah Backend di " + import.meta.env.VITE_BACKEND_URL + " sudah menyala.");
     }
 
     return Promise.reject(error);

@@ -77,39 +77,45 @@ const Sidebar = () => {
         {/* Brand Logo & Toggle Button Area */}
         <div className={`flex items-center mb-10 mt-14 lg:mt-0 w-full ${isExpanded ? 'justify-between px-2' : 'justify-center'}`}>
           
-          {/* Logo hanya muncul jika isExpanded TRUE */}
           {isExpanded && (
             <div className="flex items-center gap-3 animate-in fade-in zoom-in duration-500 overflow-hidden">
-              <div className="w-9 h-9 flex items-center justify-center shrink-0">
+              {/* Container Logo Baru: Memberikan bingkai halus agar logo menyatu */}
+              <div className="w-10 h-10 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center shrink-0 shadow-inner group">
                 <img 
                   src={LogoImg} 
                   alt="Logo" 
-                  className="w-full h-full object-contain"
+                  className="w-7 h-7 object-contain transition-all duration-500 brightness-110 saturate-125"
+                  style={{ 
+                    // Filter untuk membuat logo sedikit lebih 'glow' dan menyatu dengan warna teks
+                    filter: 'drop-shadow(0 0 8px rgba(226, 151, 193, 0.4))' 
+                  }}
                 />
               </div>
+              
               <div className="flex flex-col">
-                <h1 className="text-sm font-black text-white italic tracking-tighter uppercase leading-none whitespace-nowrap">
+                <h1 className="text-[15px] font-black text-white italic tracking-tighter uppercase leading-none whitespace-nowrap">
                   Raly <span className="text-[#E297C1]">Admin</span>
                 </h1>
-                <p className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] mt-1 whitespace-nowrap">Management</p>
+                <p className="text-[8px] font-bold text-white/30 uppercase tracking-[0.25em] mt-1.5 whitespace-nowrap">
+                  Control Panel
+                </p>
               </div>
             </div>
           )}
           
-          {/* Tombol Toggle tetap muncul untuk mengontrol Sidebar */}
           <button 
             onClick={() => setIsExpanded(!isExpanded)}
-            className={`p-2 rounded-xl bg-white/5 text-white hover:bg-[#E297C1] transition-all duration-300 ${!isExpanded ? 'mt-2' : ''}`}
+            className={`p-2 rounded-xl bg-white/5 text-white/70 hover:text-white hover:bg-[#E297C1] transition-all duration-300 border border-white/5 hover:border-transparent ${!isExpanded ? 'mt-2' : ''}`}
           >
             {isExpanded ? <X size={18} /> : <Menu size={18} />}
           </button>
         </div>
 
         {/* Navigation Links */}
-        <nav className="flex-1 space-y-2 pr-1 custom-scrollbar overflow-y-auto w-full">
+        <nav className="flex-1 space-y-1.5 pr-1 custom-scrollbar overflow-y-auto w-full">
           {isExpanded && (
-            <p className="px-4 text-[9px] font-black text-white/20 uppercase tracking-[0.4em] mb-4 animate-in fade-in duration-700">
-              Main Navigation
+            <p className="px-4 text-[9px] font-black text-white/20 uppercase tracking-[0.4em] mb-4 mt-2">
+              Main Menu
             </p>
           )}
           
@@ -119,30 +125,30 @@ const Sidebar = () => {
               <Link 
                 key={item.name} 
                 to={item.path}
-                className={`group flex items-center rounded-xl transition-all duration-500 relative ${
-                  isExpanded ? 'px-4 py-4 gap-4' : 'p-3 justify-center mb-2'
+                className={`group flex items-center rounded-xl transition-all duration-300 relative ${
+                  isExpanded ? 'px-4 py-3.5 gap-4' : 'p-3 justify-center mb-2'
                 } ${
                   active 
-                    ? 'bg-[#E297C1] text-white shadow-[0_10px_25px_rgba(226,151,193,0.25)]' 
-                    : 'text-white/40 hover:bg-white/5 hover:text-white'
+                    ? 'bg-gradient-to-r from-[#E297C1] to-[#D17EAD] text-white shadow-[0_8px_20px_rgba(226,151,193,0.2)]' 
+                    : 'text-white/40 hover:bg-white/5 hover:text-white/80'
                 }`}
               >
                 {active && isExpanded && (
-                  <div className="absolute left-0 w-1.5 h-6 bg-white rounded-r-full" />
+                  <div className="absolute left-0 w-1 h-5 bg-white rounded-r-full shadow-[0_0_10px_white]" />
                 )}
                 
-                <div className={`transition-all duration-500 shrink-0 ${active ? 'scale-110' : 'group-hover:scale-110'}`}>
+                <div className={`transition-all duration-300 shrink-0 ${active ? 'scale-110' : 'group-hover:scale-110 group-hover:text-[#E297C1]'}`}>
                   {item.icon}
                 </div>
                 
                 {isExpanded && (
-                  <span className="font-black text-[10px] uppercase tracking-[0.15em] animate-in fade-in slide-in-from-left-4 duration-500 truncate">
+                  <span className={`font-bold text-[11px] uppercase tracking-wider animate-in fade-in duration-500 truncate ${active ? 'text-white' : 'group-hover:translate-x-1 transition-transform'}`}>
                     {item.name}
                   </span>
                 )}
 
                 {!isExpanded && (
-                   <div className="hidden lg:block absolute left-16 bg-[#E297C1] text-white text-[10px] font-black px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-all translate-x-2 group-hover:translate-x-0 z-50 uppercase tracking-widest whitespace-nowrap shadow-xl">
+                   <div className="hidden lg:block absolute left-16 bg-[#1A1A2E] border border-white/10 text-[#E297C1] text-[10px] font-black px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-all translate-x-2 group-hover:translate-x-0 z-50 uppercase tracking-widest shadow-2xl">
                       {item.name}
                    </div>
                 )}
@@ -152,10 +158,17 @@ const Sidebar = () => {
         </nav>
 
         {/* Footer */}
-        <div className={`pt-6 border-t border-white/5 mt-auto ${isExpanded ? 'px-4' : 'flex justify-center'}`}>
-          <p className="text-[8px] font-black text-white/10 uppercase tracking-[0.5em] italic whitespace-nowrap">
-            {isExpanded ? '© 2026 Raly • v1.0' : "'26"}
-          </p>
+        <div className={`pt-6 border-t border-white/5 mt-auto ${isExpanded ? 'px-4 pb-2' : 'flex justify-center pb-6'}`}>
+          <div className="flex items-center gap-2">
+             {isExpanded ? (
+               <div className="flex flex-col opacity-20 hover:opacity-50 transition-opacity cursor-default">
+                  <span className="text-[10px] font-black text-white uppercase tracking-[0.2em]">Raly Studio</span>
+                  <span className="text-[8px] font-medium text-white italic">Version 1.0.4</span>
+               </div>
+             ) : (
+               <span className="text-[10px] font-black text-white/10 italic">'26</span>
+             )}
+          </div>
         </div>
       </aside>
     </>
