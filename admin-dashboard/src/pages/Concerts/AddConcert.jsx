@@ -419,18 +419,18 @@ const AddConcert = () => {
             </div>
 
             <div className="flex flex-1 md:flex-none bg-slate-50 p-1.5 md:p-2 rounded-[20px] md:rounded-[24px] border border-slate-100 shadow-inner">
-              {['DRAFT', 'PUBLISHED'].map((s) => (
+              {['DRAFT', 'PUBLISH'].map((s) => (
                 <button
                   key={s}
                   type="button"
                   onClick={() => setFormData(p => ({...p, status: s}))}
                   className={`flex-1 md:flex-none px-4 md:px-10 py-3 md:py-4 rounded-[14px] md:rounded-[18px] text-[9px] md:text-[11px] font-black uppercase tracking-widest transition-all duration-500 ${
                     formData.status === s 
-                      ? (s === 'PUBLISHED' ? 'bg-[#E297C1] text-white shadow-xl shadow-pink-100 scale-105' : 'bg-slate-900 text-white shadow-xl shadow-slate-300 scale-105')
+                      ? (s === 'PUBLISH' ? 'bg-[#E297C1] text-white shadow-xl shadow-pink-100 scale-105' : 'bg-slate-900 text-white shadow-xl shadow-slate-300 scale-105')
                       : 'text-slate-400 hover:text-slate-600'
                   }`}
                 >
-                  {s === 'PUBLISHED' ? 'PUBLISH' : s}
+                  {s === 'PUBLISH' ? 'PUBLISH' : s}
                 </button>
               ))}
             </div>

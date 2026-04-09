@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const api = axios.create({
   // URL Tunnelmole kamu
-  baseURL: 'http://nsqycl-ip-182-8-194-144.tunnelmole.net', 
+  baseURL: 'http://evvwt3-ip-182-8-211-179.tunnelmole.net', 
   headers: {
     'Content-Type': 'application/json',
   },
