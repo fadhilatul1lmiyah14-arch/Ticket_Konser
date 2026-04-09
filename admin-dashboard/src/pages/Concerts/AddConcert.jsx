@@ -540,36 +540,79 @@ const AddConcert = () => {
             </div>
           </div>
 
-          {/* Section: Terms Protocol */}
+         {/* Section: Terms Protocol */}
           <div className="bg-slate-900 p-6 sm:p-8 md:p-12 rounded-[32px] md:rounded-[48px] shadow-2xl shadow-slate-300 text-white relative overflow-hidden">
-            <h3 className="font-black text-white uppercase italic mb-6 md:mb-10 flex items-center gap-3 md:gap-4 text-lg md:text-xl relative z-10">
-              <ShieldCheck size={22} className="text-[#E297C1]" /> Security Protocols ({activeLang.toUpperCase()})
-            </h3>
             <div className="relative z-10">
-              <div className="flex gap-2 md:gap-3 mb-6">
-                <input 
-                  type="text" value={inputTerm} onChange={(e) => setInputTerm(e.target.value)} 
-                  placeholder={activeLang === 'id' ? "Aturan baru..." : "Add rule..."} 
-                  className="flex-1 bg-white/5 border-2 border-white/5 rounded-[18px] md:rounded-[22px] px-6 md:px-8 py-3 md:py-5 text-xs md:text-sm font-bold outline-none focus:border-[#E297C1] text-white" 
-                />
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                <h3 className="font-black text-white uppercase italic flex items-center gap-3 md:gap-4 text-lg md:text-xl">
+                  <ShieldCheck size={22} className="text-[#E297C1]" /> Security Protocols ({activeLang.toUpperCase()})
+                </h3>
+                
+                {/* Info Badge untuk Admin */}
+                <div className="flex items-center gap-2 bg-[#E297C1]/10 border border-[#E297C1]/20 px-4 py-2 rounded-full">
+                  <Info size={14} className="text-[#E297C1]" />
+                  <span className="text-[10px] font-bold text-pink-100 uppercase tracking-tight">
+                    Khusus S&K Tambahan Event Ini
+                  </span>
+                </div>
+              </div>
+
+              {/* Input Group */}
+              <div className="flex gap-2 md:gap-3 mb-8">
+                <div className="relative flex-1 group">
+                  <input 
+                    type="text" 
+                    value={inputTerm} 
+                    onChange={(e) => setInputTerm(e.target.value)} 
+                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTerm())}
+                    placeholder={activeLang === 'id' ? "Contoh: Dilarang membawa kamera profesional..." : "Add specific rule..."} 
+                    className="w-full bg-white/5 border-2 border-white/10 rounded-[18px] md:rounded-[22px] px-6 md:px-8 py-3 md:py-5 text-xs md:text-sm font-bold outline-none focus:border-[#E297C1] focus:bg-white/10 text-white transition-all placeholder:text-white/20" 
+                  />
+                </div>
                 <button 
-                  type="button" onClick={addTerm} 
-                  className="bg-[#E297C1] text-white px-6 md:px-8 rounded-[18px] md:rounded-[22px] hover:scale-105 transition-all shadow-lg"
+                  type="button" 
+                  onClick={addTerm} 
+                  className="bg-[#E297C1] text-white px-6 md:px-8 rounded-[18px] md:rounded-[22px] hover:scale-105 active:scale-95 transition-all shadow-lg shadow-pink-500/20 flex items-center justify-center"
                 >
-                  <Plus size={24}/>
+                  <Plus size={24} strokeWidth={3} />
                 </button>
               </div>
+
+              {/* Terms List Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {termsList[activeLang].map((t, i) => (
-                  <div key={i} className="flex items-center justify-between bg-white/5 p-4 rounded-xl md:rounded-2xl border border-white/5 group animate-in zoom-in">
-                    <p className="text-[9px] md:text-[10px] font-bold text-white/70 uppercase truncate mr-2">{t}</p>
-                    <X size={16} className="shrink-0 cursor-pointer text-white/30 hover:text-rose-500" onClick={() => setTermsList(prev => ({...prev, [activeLang]: prev[activeLang].filter((_, idx) => idx !== i)}))}/>
+                {termsList[activeLang].length > 0 ? (
+                  termsList[activeLang].map((t, i) => (
+                    <div key={i} className="flex items-center justify-between bg-white/5 hover:bg-white/10 p-4 rounded-xl md:rounded-2xl border border-white/5 transition-colors group animate-in zoom-in duration-300">
+                      <div className="flex items-start gap-3 overflow-hidden">
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#E297C1] mt-1.5 shrink-0" />
+                        <p className="text-[10px] md:text-[11px] font-medium text-white/80 leading-relaxed">
+                          {t}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setTermsList(prev => ({...prev, [activeLang]: prev[activeLang].filter((_, idx) => idx !== i)}))}
+                        className="p-1 hover:bg-rose-500/20 rounded-md transition-colors text-white/20 hover:text-rose-500"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <div className="col-span-full py-8 border-2 border-dashed border-white/5 rounded-[24px] flex flex-col items-center justify-center opacity-40">
+                    <FileText size={24} className="mb-2" />
+                    <p className="text-[10px] font-bold uppercase tracking-widest">Belum ada S&K tambahan</p>
                   </div>
-                ))}
+                )}
               </div>
             </div>
+
+            {/* Decorative Background Icon */}
+            <div className="absolute -bottom-12 -right-12 opacity-[0.03] text-white rotate-12 pointer-events-none">
+              <ShieldCheck size={280} />
+            </div>
           </div>
-        </div>
+          </div>
 
         {/* RIGHT COLUMN */}
         <div className="lg:col-span-4 space-y-8 md:space-y-10">

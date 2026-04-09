@@ -14,7 +14,7 @@ import 'leaflet/dist/leaflet.css';
 import { 
   X, Calendar, Clock, Loader2, 
   Plus, Trash2, Image as ImageIcon,
-  ShieldCheck, LayoutGrid, Layers, RefreshCcw, MapPin, Navigation, Languages, Sparkles
+  ShieldCheck, LayoutGrid, Layers, RefreshCcw, MapPin, Navigation, Languages, Sparkles, Info
 } from 'lucide-react';
 
 // Fix for default marker icon in Leaflet
@@ -517,32 +517,77 @@ const EditConcert = () => {
             </div>
           </div>
 
-          <div className="bg-slate-900 p-6 md:p-12 rounded-[48px] shadow-2xl text-white">
-            <h3 className="font-black text-white uppercase italic mb-10 flex items-center gap-4 text-xl">
-              <ShieldCheck size={22} className="text-[#E297C1]" /> Security Protocols ({activeLang.toUpperCase()})
-            </h3>
-            <div>
-              <div className="flex gap-3 mb-6">
-                <input 
-                    type="text" 
-                    value={inputTerm[activeLang]} 
-                    onChange={(e) => setInputTerm(prev => ({...prev, [activeLang]: e.target.value}))} 
-                    placeholder={`New rule in ${activeLang === 'id' ? 'Indonesian' : 'English'}...`} 
-                    className="flex-1 bg-white/5 border-2 border-white/5 rounded-[18px] px-6 py-3 text-xs font-bold outline-none focus:border-[#E297C1] text-white" 
-                />
-                <button type="button" onClick={addTerm} className="bg-[#E297C1] text-white px-6 rounded-[18px] hover:scale-105 transition-all"><Plus size={24}/></button>
+          {/* Section: Terms Protocol (EDIT MODE) */}
+<div className="bg-slate-900 p-6 md:p-12 rounded-[48px] shadow-2xl text-white relative overflow-hidden">
+  <div className="relative z-10">
+    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10">
+      <h3 className="font-black text-white uppercase italic flex items-center gap-4 text-xl">
+        <ShieldCheck size={22} className="text-[#E297C1]" /> Security Protocols ({activeLang.toUpperCase()})
+      </h3>
+
+      {/* Info Badge khusus untuk Admin agar tidak bingung saat edit */}
+      <div className="flex items-center gap-2 bg-[#E297C1]/10 border border-[#E297C1]/20 px-4 py-2 rounded-full">
+        <Info size={14} className="text-[#E297C1]" />
+        <span className="text-[10px] font-bold text-pink-100 uppercase tracking-tight">
+          S&K Tambahan Khusus Event Ini
+        </span>
+      </div>
+    </div>
+
+    <div>
+      <div className="flex gap-3 mb-8">
+        <input 
+          type="text" 
+          value={inputTerm[activeLang]} 
+          onChange={(e) => setInputTerm(prev => ({...prev, [activeLang]: e.target.value}))} 
+          onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTerm())}
+          placeholder={activeLang === 'id' ? "Aturan tambahan (ID)..." : "Additional rule (EN)..."} 
+          className="flex-1 bg-white/5 border-2 border-white/5 rounded-[18px] px-6 py-4 text-sm font-bold outline-none focus:border-[#E297C1] focus:bg-white/10 text-white transition-all placeholder:text-white/20" 
+        />
+        <button 
+          type="button" 
+          onClick={addTerm} 
+          className="bg-[#E297C1] text-white px-8 rounded-[18px] hover:scale-105 active:scale-95 transition-all shadow-lg shadow-pink-500/20 flex items-center justify-center"
+        >
+          <Plus size={24} strokeWidth={3} />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {termsList.length > 0 ? (
+          termsList.map((t, i) => (
+            <div key={i} className="flex items-center justify-between bg-white/5 hover:bg-white/10 p-4 rounded-xl border border-white/5 transition-colors group animate-in zoom-in duration-300">
+              <div className="flex items-start gap-3 overflow-hidden">
+                <div className="w-1.5 h-1.5 rounded-full bg-[#E297C1] mt-1.5 shrink-0" />
+                <p className="text-[10px] md:text-[11px] font-medium text-white/80 leading-relaxed italic">
+                  {t[activeLang] || t.id}
+                </p>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {termsList.map((t, i) => (
-                  <div key={i} className="flex items-center justify-between bg-white/5 p-4 rounded-xl border border-white/5 group">
-                    <p className="text-[10px] font-bold text-white/70 uppercase truncate mr-2">{t[activeLang] || t.id}</p>
-                    <X size={16} className="shrink-0 cursor-pointer text-white/30 hover:text-rose-500" onClick={() => setTermsList(termsList.filter((_, idx) => idx !== i))}/>
-                  </div>
-                ))}
-              </div>
+              <button
+                type="button"
+                onClick={() => setTermsList(termsList.filter((_, idx) => idx !== i))}
+                className="p-1 hover:bg-rose-500/20 rounded-md transition-colors text-white/20 hover:text-rose-500"
+              >
+                <X size={16} />
+              </button>
             </div>
+          ))
+        ) : (
+          <div className="col-span-full py-10 border-2 border-dashed border-white/5 rounded-[32px] flex flex-col items-center justify-center opacity-30">
+            <ShieldCheck size={32} className="mb-2" />
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em]">Tidak ada S&K khusus</p>
           </div>
-        </div>
+        )}
+      </div>
+    </div>
+  </div>
+
+  {/* Watermark Background agar visual tidak flat */}
+  <div className="absolute -bottom-12 -right-12 opacity-[0.03] text-white rotate-12 pointer-events-none">
+    <ShieldCheck size={280} />
+  </div>
+</div>
+</div>
 
         <div className="lg:col-span-4 space-y-10">
           <div className="bg-white p-8 rounded-[40px] shadow-2xl shadow-slate-200/40 border border-slate-50">

@@ -4,7 +4,7 @@ import {
   MapPin, Calendar, Share2, ChevronLeft, Star, 
   ShieldCheck, ChevronRight, Ticket, Info, 
   Clock, ArrowRight, Users, Loader2, AlertCircle,
-  ExternalLink
+  ExternalLink, FileText
 } from 'lucide-react';
 import api from '../api/axiosConfig'; 
 import MainLayout from '../layouts/MainLayout';
@@ -23,7 +23,6 @@ const ConcertDetail = () => {
   const getLangText = (data) => {
     if (!data) return "";
     if (typeof data === 'string') return data;
-    // Jika data adalah object {id: "...", en: "..."}
     return data[currentLang] || data['id'] || "";
   };
 
@@ -40,8 +39,20 @@ const ConcertDetail = () => {
     const fetchConcertDetail = async () => {
       try {
         setLoading(true);
+        // Memanggil detail event
         const response = await api.get(`/customer/events/${id}`);
         const data = response.data?.data;
+        
+        // PERBAIKAN: Bungkus Global Terms ke dalam objek { id, en } agar seragam
+        if (data && Array.isArray(data.terms)) {
+          data.terms = data.terms.map(term => {
+            if (typeof term === 'string') {
+              return { id: term, en: term };
+            }
+            return term;
+          });
+        }
+        
         setConcert(data);
         
         if (data?.ticket_types?.length > 0) {
@@ -60,6 +71,7 @@ const ConcertDetail = () => {
   const handleOpenMap = () => {
     if (!concert) return;
     const query = encodeURIComponent(`${concert.location} ${concert.address_details || ''}`);
+    // PERBAIKAN: Menggunakan URL Google Maps yang benar
     window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
   };
 
@@ -218,7 +230,6 @@ const ConcertDetail = () => {
     }
 
     if (activeTabLower === 'deskripsi' || activeTabLower === 'description') {
-        // PERBAIKAN LOGIKA DISINI
         let descriptionArray = [];
         try {
             descriptionArray = typeof concert.description === 'string' 
@@ -267,33 +278,64 @@ const ConcertDetail = () => {
     }
 
     if (activeTabLower === 'syarat & ketentuan' || activeTabLower === 'terms & conditions') {
-        let rules = [];
-        try {
-            const parsed = typeof concert.terms_conditions === 'string' ? JSON.parse(concert.terms_conditions) : concert.terms_conditions;
-            if (Array.isArray(parsed) && parsed.length > 0) {
-                rules = parsed.map(r => getLangText(r));
-            } else {
-                rules = (currentLang === 'id' 
-                  ? ["Dilarang membawa senjata tajam.", "Dilarang membawa obat-obatan terlarang.", "Tiket tidak dapat di-refund."]
-                  : ["No weapons allowed.", "No illegal drugs allowed.", "Tickets are non-refundable."]
-                );
+        let allTerms = [];
+        
+        if (Array.isArray(concert.terms)) {
+            allTerms = [...concert.terms];
+        } else if (typeof concert.terms === 'string') {
+            try {
+                allTerms = JSON.parse(concert.terms);
+            } catch (e) {
+                allTerms = [concert.terms];
             }
-        } catch (e) {
-            rules = [currentLang === 'id' ? "Syarat dan ketentuan berlaku." : "Terms and conditions apply."];
+        }
+
+        const specificRules = concert.rules || concert.event_terms || [];
+        if (Array.isArray(specificRules)) {
+            allTerms = [...allTerms, ...specificRules];
         }
 
         return (
-          <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
-            <h4 className="text-lg font-black text-slate-900 mb-6 uppercase italic">{currentLang === 'id' ? 'Aturan & Ketentuan' : 'House Rules & Terms'}</h4>
-            <div className="grid gap-3">
-              {rules.map((rule, i) => (
-                <div key={i} className="flex items-center gap-4 bg-white p-4 rounded-2xl border border-slate-100 hover:border-purple-200 transition-all group">
-                  <div className="bg-slate-100 text-slate-400 p-2 rounded-lg group-hover:bg-purple-600 group-hover:text-white transition-colors">
-                    <ShieldCheck size={16} />
+          <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 text-left space-y-8">
+            <section>
+              <div className="flex items-center gap-4 mb-6">
+                <div className="h-[2px] w-8 bg-purple-600"></div>
+                <h4 className="text-sm font-black text-slate-900 uppercase tracking-[0.15em] italic">
+                  {currentLang === 'id' ? 'Protokol & Ketentuan Event' : 'Event Protocols & Terms'}
+                </h4>
+                <div className="h-[2px] flex-1 bg-slate-100"></div>
+              </div>
+              
+              <div className="grid gap-3">
+                {allTerms.length > 0 ? (
+                  allTerms.map((rule, i) => (
+                    <div key={i} className="flex items-start gap-4 bg-slate-50 p-5 rounded-2xl border border-slate-100 hover:border-purple-200 hover:bg-white transition-all group shadow-sm">
+                      <div className="bg-white text-purple-600 p-2.5 rounded-xl shadow-sm group-hover:bg-purple-600 group-hover:text-white transition-colors mt-0.5">
+                        <ShieldCheck size={18} />
+                      </div>
+                      <p className="font-bold text-slate-700 text-xs md:text-sm italic leading-relaxed">
+                        {getLangText(rule).replace(/<[^>]*>?/gm, '')}
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="bg-slate-50 p-6 rounded-2xl border border-dashed border-slate-200 text-center">
+                    <p className="text-slate-400 italic text-sm">{currentLang === 'id' ? 'Tidak ada ketentuan khusus.' : 'No specific terms available.'}</p>
                   </div>
-                  <p className="font-bold text-slate-600 text-xs italic">{rule}</p>
-                </div>
-              ))}
+                )}
+              </div>
+            </section>
+            
+            <div className="p-6 bg-purple-50 rounded-[2rem] border border-purple-100">
+               <div className="flex gap-3 items-center text-purple-600 mb-2">
+                  <Info size={18} />
+                  <p className="text-[10px] font-black uppercase tracking-widest">{currentLang === 'id' ? 'Informasi Penting' : 'Important Notice'}</p>
+               </div>
+               <p className="text-xs text-purple-800/70 font-medium leading-relaxed">
+                 {currentLang === 'id' 
+                   ? 'Dengan membeli tiket ini, Anda dianggap telah menyetujui seluruh syarat dan ketentuan yang berlaku di atas. E-tiket resmi hanya dikirimkan melalui sistem RalyTicket.' 
+                   : 'By purchasing this ticket, you are deemed to have agreed to all the terms and conditions mentioned above. Official e-tickets are only sent through the RalyTicket system.'}
+               </p>
             </div>
           </div>
         );
