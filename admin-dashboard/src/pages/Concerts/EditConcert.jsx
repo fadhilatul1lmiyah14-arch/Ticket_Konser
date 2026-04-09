@@ -188,7 +188,7 @@ const EditConcert = () => {
         address_details: event.address_details || '',
         latitude: event.latitude ? parseFloat(event.latitude) : -6.200000,
         longitude: event.longitude ? parseFloat(event.longitude) : 106.816666,
-        status: event.status === 'PUBLISH' ? 'PUBLISHED' : (event.status || 'DRAFT')
+        status: event.status === 'PUBLISH' ? 'PUBLISH' : (event.status || 'DRAFT')
       });
 
       // 2. Sync Descriptions (Harus Array of Objects)
@@ -313,7 +313,7 @@ const EditConcert = () => {
       
       event_date: formData.event_date,
       start_time: formData.start_time,
-      status: formData.status === 'PUBLISHED' ? 'PUBLISHED' : 'DRAFT', 
+      status: formData.status === 'PUBLISH' ? 'PUBLISH' : 'DRAFT', 
       images: imageUrls,
       casts: casts,
       ticket_types: ticketTiers.map(t => ({
@@ -391,14 +391,14 @@ const EditConcert = () => {
             {/* Container for Status and Close Button */}
             <div className="flex items-center gap-3 bg-slate-50 p-1.5 rounded-[24px] border border-slate-100">
               <div className="flex">
-                {['DRAFT', 'PUBLISHED'].map((s) => (
+                {['DRAFT', 'PUBLISH'].map((s) => (
                   <button
                     key={s} type="button" onClick={() => setFormData(p => ({...p, status: s}))}
                     className={`px-6 md:px-10 py-3 rounded-[18px] text-[11px] font-black uppercase tracking-widest transition-all ${
                       formData.status === s ? 'bg-slate-900 text-white shadow-xl' : 'text-slate-400'
                     }`}
                   >
-                    {s === 'PUBLISHED' ? 'PUBLISH' : s}
+                    {s === 'PUBLISH' ? 'PUBLISH' : s}
                   </button>
                 ))}
               </div>
