@@ -168,10 +168,14 @@ const AddConcert = () => {
     }
   };
 
-  const handleAutoTranslate = async () => {
-  // 1. Cek apakah konten ID ada
-  const hasContent = formData.title.id.trim() !== "" || 
-                     descriptions.id.some(d => d && d !== "<p><br></p>");
+const handleAutoTranslate = async () => {
+  // 1. Validasi awal
+  const currentTitleId = formData.title.id;
+  const currentDescsId = [...descriptions.id];
+  const currentTermsId = [...termsList.id];
+
+  const hasContent = currentTitleId.trim() !== "" || 
+                    currentDescsId.some(d => d && d !== "<p><br></p>");
 
   if (!hasContent) {
     alert("Isi konten Bahasa Indonesia terlebih dahulu!");
@@ -181,68 +185,66 @@ const AddConcert = () => {
   setIsTranslating(true);
 
   try {
-    // Fungsi pembantu untuk translate teks murni saja
     const translateRawText = async (text) => {
       if (!text || text.trim() === "") return "";
-      
-      // Bersihkan karakter khusus yang bisa merusak URL
       const encodedText = encodeURIComponent(text);
       const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=id&tl=en&dt=t&q=${encodedText}`;
-      
       const res = await fetch(url);
-      if (!res.ok) throw new Error("Google API Limit/Error");
-      
+      if (!res.ok) throw new Error("API Error");
       const data = await res.json();
-      // Gabungkan hasil (karena Google memecah per kalimat dalam array)
       return data[0].map(item => item[0]).join("");
     };
 
-    // Fungsi untuk memproses HTML dari ReactQuill
     const processQuillContent = async (html) => {
       if (!html || html === "<p><br></p>") return "<p><br></p>";
-      
-      // Gunakan DOMParser untuk mengambil teks murni tanpa tag HTML
       const doc = new DOMParser().parseFromString(html, 'text/html');
       const plainText = doc.body.innerText || doc.body.textContent;
-      
       if (!plainText.trim()) return html;
-
       const translatedText = await translateRawText(plainText);
-      
-      // Bungkus kembali ke tag paragraf agar ReactQuill mengenalinya
       return `<p>${translatedText.replace(/\n/g, "</p><p>")}</p>`;
     };
 
     // --- EKSEKUSI TRANSLATE ---
-
-    // 1. Translate Title (Ambil teks murni saja)
-    const titleIdClean = formData.title.id.replace(/<\/?[^>]+(>|$)/g, "");
+    const titleIdClean = currentTitleId.replace(/<\/?[^>]+(>|$)/g, "");
     const transTitle = await translateRawText(titleIdClean);
 
-    // 2. Translate Descriptions (Array)
     const transDescs = await Promise.all(
-      descriptions.id.map(async (content) => await processQuillContent(content))
+      currentDescsId.map(async (content) => await processQuillContent(content))
     );
 
-    // 3. Translate Terms (Array)
     const transTerms = await Promise.all(
-      termsList.id.map(async (term) => await translateRawText(term))
+      currentTermsId.map(async (term) => await translateRawText(term))
     );
 
-    // Update States
+    // --- UPDATE STATE SECARAN ATOMIC ---
+    // Gunakan fungsional update (prev) untuk memastikan tidak ada data yang tertinggal
     setFormData(prev => ({
       ...prev,
-      title: { ...prev.title, en: transTitle }
+      title: { 
+        id: currentTitleId, // Kunci: Paksa ID tetap menggunakan nilai saat ini
+        en: transTitle      // Update EN dengan hasil translasi
+      }
     }));
-    setDescriptions(prev => ({ ...prev, en: transDescs }));
-    setTermsList(prev => ({ ...prev, en: transTerms }));
 
-    setActiveLang('en');
-    alert("✅ Berhasil menerjemahkan ke Bahasa Inggris!");
+    setDescriptions(prev => ({
+      id: [...prev.id], // Pastikan array ID tidak tersentuh
+      en: transDescs
+    }));
+
+    setTermsList(prev => ({
+      id: [...prev.id],
+      en: transTerms
+    }));
+
+    // Beri jeda sedikit agar state stabil sebelum pindah tab
+    setTimeout(() => {
+      setActiveLang('en');
+      alert("✅ Berhasil menerjemahkan ke Bahasa Inggris!");
+    }, 150);
 
   } catch (error) {
     console.error("Translation Error:", error);
-    alert("Gagal translasi otomatis. Pastikan koneksi internet stabil atau teks tidak terlalu panjang.");
+    alert("Gagal translasi otomatis.");
   } finally {
     setIsTranslating(false);
   }
@@ -486,6 +488,7 @@ const AddConcert = () => {
                         <div key={idx} className="relative group/editor animate-in slide-in-from-top-2">
                              <div className="rounded-[24px] md:rounded-[32px] overflow-hidden border-2 border-slate-50 bg-slate-50 focus-within:border-[#E297C1] focus-within:bg-white transition-all shadow-inner">
                                 <ReactQuill 
+                                key={`quill-${activeLang}-${idx}`}
                                     theme="snow"
                                     value={desc}
                                     onChange={(content) => handleDescriptionChange(idx, content)}

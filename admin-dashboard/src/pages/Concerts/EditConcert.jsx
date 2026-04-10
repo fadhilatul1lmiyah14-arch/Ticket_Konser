@@ -122,37 +122,48 @@ const EditConcert = () => {
 };
 
   const handleAutoTranslateAll = async () => {
-    setIsTranslating(true);
-    try {
-      // 1. Translate Title
-      const translatedTitle = await translateText(formData.title.id);
-      setFormData(prev => ({ ...prev, title: { ...prev.title, en: translatedTitle } }));
+  // Ambil konten ID saat ini untuk diterjemahkan
+  const currentTitleId = formData.title.id;
+  if (!currentTitleId.trim()) {
+    alert("Isi Judul (ID) terlebih dahulu!");
+    return;
+  }
 
-      // 2. Translate Descriptions
-      const translatedDescs = await Promise.all(
-        descriptions.map(async (desc) => ({
-          id: desc.id,
-          en: await translateText(desc.id)
-        }))
-      );
-      setDescriptions(translatedDescs);
+  setIsTranslating(true);
+  try {
+    // 1. Translate Title
+    const transTitleEn = await translateText(currentTitleId);
+    setFormData(prev => ({
+      ...prev,
+      title: { ...prev.title, en: transTitleEn }
+    }));
 
-      // 3. Translate Terms
-      const translatedTerms = await Promise.all(
-        termsList.map(async (term) => ({
-          id: term.id,
-          en: await translateText(term.id)
-        }))
-      );
-      setTermsList(translatedTerms);
+    // 2. Translate Descriptions
+    const translatedDescs = await Promise.all(
+      descriptions.map(async (desc) => ({
+        id: desc.id, // ID tetap asli
+        en: await translateText(desc.id) // EN hasil translasi dari ID
+      }))
+    );
+    setDescriptions(translatedDescs);
 
-      alert("✨ Auto-translation complete!");
-    } catch (err) {
-      alert("Failed to translate some parts.");
-    } finally {
-      setIsTranslating(false);
-    }
-  };
+    // 3. Translate Terms
+    const translatedTerms = await Promise.all(
+      termsList.map(async (term) => ({
+        id: term.id,
+        en: await translateText(term.id)
+      }))
+    );
+    setTermsList(translatedTerms);
+
+    alert("✨ Auto-translation complete!");
+  } catch (err) {
+    console.error(err);
+    alert("Gagal menerjemahkan beberapa bagian.");
+  } finally {
+    setIsTranslating(false);
+  }
+};
 
   useEffect(() => {
   const fetchData = async () => {
@@ -168,7 +179,6 @@ const EditConcert = () => {
       
       const event = eventRes.data?.data || eventRes.data;
       
-      // Helper untuk parsing JSON yang aman
       const safeParse = (val, fallback) => {
         try {
           if (!val) return fallback;
@@ -176,8 +186,11 @@ const EditConcert = () => {
         } catch (e) { return fallback; }
       };
 
-      // 1. Sync Title
-      const titleObj = safeParse(event.title, { id: event.title || '', en: event.title || '' });
+      // --- 1. SYNC TITLE ---
+      const rawTitle = safeParse(event.title, event.title);
+      const titleObj = (rawTitle && typeof rawTitle === 'object')
+        ? rawTitle 
+        : { id: event.title || '', en: event.title || '' };
       
       setFormData({
         title: titleObj,
@@ -188,22 +201,41 @@ const EditConcert = () => {
         address_details: event.address_details || '',
         latitude: event.latitude ? parseFloat(event.latitude) : -6.200000,
         longitude: event.longitude ? parseFloat(event.longitude) : 106.816666,
-        status: event.status === 'PUBLISH' ? 'PUBLISH' : (event.status || 'DRAFT')
+        status: event.status || 'DRAFT'
       });
 
-      // 2. Sync Descriptions (Harus Array of Objects)
-      const descData = safeParse(event.description, []);
-      if (Array.isArray(descData)) {
-        setDescriptions(descData.length > 0 ? descData : [{ id: '', en: '' }]);
+      // --- 2. SYNC DESCRIPTIONS (Mapping dari Objek Array ke Array Objek) ---
+      const rawDesc = event.description; // {id: ["..."], en: ["..."]}
+      if (rawDesc && typeof rawDesc === 'object' && !Array.isArray(rawDesc)) {
+        const idArr = Array.isArray(rawDesc.id) ? rawDesc.id : [];
+        const enArr = Array.isArray(rawDesc.en) ? rawDesc.en : [];
+        
+        // Buat patokan panjang array terbesar
+        const maxLen = Math.max(idArr.length, enArr.length);
+        const formattedDescs = [];
+
+        for (let i = 0; i < maxLen; i++) {
+          formattedDescs.push({
+            id: idArr[i] || '',
+            en: enArr[i] || ''
+          });
+        }
+        setDescriptions(formattedDescs.length > 0 ? formattedDescs : [{ id: '', en: '' }]);
       } else {
-        setDescriptions([{ id: event.description, en: event.description }]);
+        setDescriptions([{ id: '', en: '' }]);
       }
 
-      // 3. Sync Terms (Harus Array of Objects)
-      const termsData = safeParse(event.terms_conditions, []);
-      setTermsList(Array.isArray(termsData) ? termsData : []);
+      // --- 3. SYNC TERMS ---
+      const termsData = safeParse(event.terms_conditions, { id: '', en: '' });
+      // Jika termsList adalah array di state kamu, sesuaikan:
+      if (typeof termsData === 'object' && !Array.isArray(termsData)) {
+        // Jika API kirim satu objek tapi state minta array
+        setTermsList([termsData]); 
+      } else {
+        setTermsList(Array.isArray(termsData) ? termsData : []);
+      }
 
-      // 4. Sync Other fields
+      // --- 4. SYNC OTHERS ---
       setImageUrls(Array.isArray(event.images) ? event.images : []);
       setCasts(Array.isArray(event.casts) ? event.casts : []);
       
@@ -258,18 +290,29 @@ const EditConcert = () => {
   const addDescriptionBlock = () => setDescriptions([...descriptions, { id: '', en: '' }]);
   const removeDescriptionBlock = (index) => descriptions.length > 1 && setDescriptions(descriptions.filter((_, i) => i !== index));
   const handleDescriptionChange = (index, content) => {
-    const newDescs = [...descriptions];
-    newDescs[index][activeLang] = content;
-    setDescriptions(newDescs);
-  };
+  setDescriptions(prev => {
+    const newDescs = [...prev];
+    // Kita buat objek baru untuk index yang sedang diubah
+    newDescs[index] = {
+      ...newDescs[index], 
+      [activeLang]: content 
+    };
+    return newDescs;
+  });
+};
 
   const addTicketTier = () => setTicketTiers([...ticketTiers, { name: '', price: '', quota: '' }]);
   const removeTicketTier = (index) => ticketTiers.length > 1 && setTicketTiers(ticketTiers.filter((_, i) => i !== index));
   const handleTierChange = (index, field, value) => {
-    const newTiers = [...ticketTiers];
-    newTiers[index][field] = field === 'name' ? value.toUpperCase() : value;
-    setTicketTiers(newTiers);
-  };
+  setTicketTiers(prev => {
+    const newTiers = [...prev];
+    newTiers[index] = {
+      ...newTiers[index],
+      [field]: field === 'name' ? value.toUpperCase() : value
+    };
+    return newTiers;
+  });
+};
 
   const addImageUrl = () => {
     if (inputUrl.trim() !== "" && !imageUrls.includes(inputUrl)) {
@@ -299,7 +342,7 @@ const EditConcert = () => {
   setIsUpdating(true);
   try {
     const payload = {
-      // Dibungkus JSON.stringify agar di DB tersimpan sebagai string JSON
+      // Pastikan title dikirim sebagai string JSON
       title: JSON.stringify(formData.title),
       category_id: Number(formData.category_id),
       location_id: Number(formData.location_id),
@@ -307,20 +350,25 @@ const EditConcert = () => {
       latitude: formData.latitude,
       longitude: formData.longitude,
       
-      // Kirim array object langsung, backend kamu sudah ada logic JSON.stringify untuk ini
-      description: descriptions.filter(d => d.id.trim() !== ""), 
+      // PERBAIKAN DI SINI:
+      // Filter hanya jika benar-benar kosong di kedua bahasa, 
+      // lalu bungkus dengan JSON.stringify agar konsisten dengan title
+      description: {
+        id: descriptions.map(d => d.id),
+        en: descriptions.map(d => d.en),
+      },
       terms_conditions: JSON.stringify(termsList), 
       
       event_date: formData.event_date,
       start_time: formData.start_time,
-      status: formData.status === 'PUBLISH' ? 'PUBLISH' : 'DRAFT', 
+      status: formData.status, 
       images: imageUrls,
       casts: casts,
       ticket_types: ticketTiers.map(t => ({
         name: t.name,
         price: Number(t.price),
         quota: Number(t.quota),
-        description: "" // Tambahkan default agar skema backend terpenuhi
+        description: "" 
       }))
     };
 
@@ -328,6 +376,7 @@ const EditConcert = () => {
     alert("✅ Konser Berhasil Diperbarui!");
     navigate('/admin/manage-concert'); 
   } catch (error) {
+    console.error("Update error:", error);
     alert(error.response?.data?.message || "Gagal memperbarui data.");
   } finally {
     setIsUpdating(false);
@@ -446,6 +495,7 @@ const EditConcert = () => {
                         <div key={idx} className="relative group/editor">
                              <div className="rounded-[32px] overflow-hidden border-2 border-slate-50 bg-slate-50 focus-within:border-[#E297C1] focus-within:bg-white transition-all shadow-inner">
                                 <ReactQuill 
+                                key={`edit-quill-${idx}-${activeLang}`}
                                     theme="snow"
                                     value={desc[activeLang]}
                                     onChange={(content) => handleDescriptionChange(idx, content)}
