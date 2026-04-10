@@ -230,48 +230,92 @@ const ConcertDetail = () => {
     }
 
     if (activeTabLower === 'deskripsi' || activeTabLower === 'description') {
-        let descriptionArray = [];
-        try {
-            descriptionArray = typeof concert.description === 'string' 
-                ? JSON.parse(concert.description) 
-                : concert.description;
-        } catch (e) {
-            descriptionArray = [];
+        // 1. Ambil data description mentah
+        let rawDescription = concert.description;
+        
+        // 2. Jika description dikirim dalam bentuk string JSON, kita parse dulu
+        if (typeof rawDescription === 'string') {
+            try {
+                rawDescription = JSON.parse(rawDescription);
+            } catch (e) {
+                console.error("Gagal parse description:", e);
+                rawDescription = null;
+            }
         }
+
+        // 3. Ambil array konten berdasarkan bahasa aktif (id/en)
+        // Berdasarkan Swagger: "description": { "id": ["..."], "en": ["..."] }
+        const contentArray = rawDescription ? (rawDescription[currentLang] || rawDescription['id']) : null;
 
         return (
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 text-left w-full">
             <h4 className="text-lg font-black text-slate-900 mb-6 uppercase italic flex items-center gap-2">
-              <span className="w-1.5 h-6 bg-purple-600 rounded-full"></span> {currentLang === 'id' ? 'Narasi Event' : 'Event Narratives'}
+              <span className="w-1.5 h-6 bg-purple-600 rounded-full"></span> 
+              {currentLang === 'id' ? 'Narasi Event' : 'Event Narratives'}
             </h4>
+            
             <div className="w-full space-y-6">
-              {Array.isArray(descriptionArray) && descriptionArray.length > 0 ? (
-                descriptionArray.map((item, idx) => {
-                  const rawHtml = getLangText(item);
-                  const cleanedContent = rawHtml
+              {/* 4. Pastikan contentArray adalah array sebelum melakukan .map() */}
+              {Array.isArray(contentArray) && contentArray.length > 0 ? (
+                contentArray.map((htmlString, idx) => {
+                  // Bersihkan string HTML dari spasi non-breaking dan style inline yang mengganggu
+                  const cleanedContent = htmlString
                     .replace(/&nbsp;/g, ' ') 
                     .replace(/background-color:[^;]+;/g, '') 
                     .replace(/color:[^;]+;/g, 'color: inherit;'); 
 
                   return (
                     <div key={idx} className="bg-white p-6 md:p-8 rounded-[2rem] shadow-sm border border-slate-100">
-                      <div className="quill-content text-slate-600 font-medium text-base leading-relaxed" dangerouslySetInnerHTML={{ __html: cleanedContent }} />
+                      <div 
+                        className="quill-content text-slate-600 font-medium text-base leading-relaxed" 
+                        dangerouslySetInnerHTML={{ __html: cleanedContent }} 
+                      />
                     </div>
                   );
                 })
               ) : (
+                /* State jika data kosong */
                 <div className="bg-white p-6 md:p-8 rounded-[2rem] border border-slate-100 shadow-sm text-slate-400 italic">
                    {currentLang === 'id' ? 'Tidak ada deskripsi.' : 'No description available.'}
                 </div>
               )}
             </div>
+
+            {/* Scoped Style untuk konten yang di-render via dangerouslySetInnerHTML */}
             <style>{`
-                .quill-content { word-wrap: break-word; overflow-wrap: break-word; word-break: normal; white-space: normal; max-width: 100%; }
-                .quill-content span { background-color: transparent !important; color: inherit !important; }
-                .quill-content p { margin-bottom: 1.25rem; line-height: 1.8; }
-                .quill-content img { max-width: 100%; height: auto; border-radius: 1.5rem; margin: 1.5rem 0; }
-                .quill-content ul, .quill-content ol { padding-left: 1.5rem; margin-bottom: 1rem; }
-                .quill-content li { list-style: inherit; margin-bottom: 0.5rem; }
+                .quill-content { 
+                  word-wrap: break-word; 
+                  overflow-wrap: break-word; 
+                  word-break: normal; 
+                  white-space: normal; 
+                  max-width: 100%; 
+                }
+                .quill-content span { 
+                  background-color: transparent !important; 
+                  color: inherit !important; 
+                }
+                .quill-content p { 
+                  margin-bottom: 1.25rem; 
+                  line-height: 1.8; 
+                }
+                .quill-content strong {
+                  font-weight: 800;
+                  color: #0f172a; /* Slate 900 */
+                }
+                .quill-content img { 
+                  max-width: 100%; 
+                  height: auto; 
+                  border-radius: 1.5rem; 
+                  margin: 1.5rem 0; 
+                }
+                .quill-content ul, .quill-content ol { 
+                  padding-left: 1.5rem; 
+                  margin-bottom: 1rem; 
+                }
+                .quill-content li { 
+                  list-style: inherit; 
+                  margin-bottom: 0.5rem; 
+                }
             `}</style>
           </div>
         );
