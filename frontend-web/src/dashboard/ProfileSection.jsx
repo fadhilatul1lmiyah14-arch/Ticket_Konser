@@ -83,7 +83,6 @@ const ProfileSection = () => {
     { name: 'Dark', hex: '374151' }, { name: 'Red', hex: 'f87171' }, { name: 'Black', hex: '000000' }
   ];
 
-  // Helper untuk buat query string avatar
   const getAvatarUrl = useCallback((data) => {
     return `https://api.dicebear.com/9.x/toon-head/svg?seed=${data.seed}&backgroundColor=${data.backgroundColor}&hair=${data.hair}&hairColor=${data.hairColor}&mouth=${data.mouth}&clothesColor=${data.clothesColor}&clothes=${data.clothes}`;
   }, []);
@@ -115,18 +114,14 @@ const ProfileSection = () => {
   const handleSave = async () => {
     if (!name) return alert("Nama tidak boleh kosong!");
     setIsUpdating(true);
-    
-    // Kita buat URL lengkap sebagai "seed" kustom agar Backend menerimanya
     const finalAvatarUrl = getAvatarUrl(avatarData);
     
     try {
-      // PERBAIKAN: Kirim field 'avatar_seed' sesuai permintaan Backend
       await api.patch("/auth/update-profile", { 
         name: name,
-        avatar_seed: finalAvatarUrl // Backend minta avatar_seed, kita beri URL lengkapnya di sini
+        avatar_seed: finalAvatarUrl 
       });
       
-      // Update LocalStorage agar UI langsung berubah
       const currentUser = JSON.parse(localStorage.getItem('user')) || {};
       const updatedUser = { 
         ...currentUser, 
@@ -136,13 +131,10 @@ const ProfileSection = () => {
       };
       
       localStorage.setItem('user', JSON.stringify(updatedUser));
-      
-      // Trigger event untuk komponen lain
       window.dispatchEvent(new Event('profileUpdated'));
       window.dispatchEvent(new Event('storage')); 
 
       if (fetchUserData) await fetchUserData();
-      
       alert(t.success);
     } catch (err) {
       console.error("Error 422 Fix:", err.response?.data);
@@ -153,77 +145,85 @@ const ProfileSection = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 md:px-6 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="mb-8 md:mb-10 flex flex-col sm:flex-row items-center sm:items-start gap-4 text-center sm:text-left">
-        <div className="p-3 bg-purple-600 rounded-2xl shadow-lg shadow-purple-200 text-white shrink-0">
-            <User size={28} />
-        </div>
-        <div>
-            <h2 className="text-2xl md:text-3xl font-black text-slate-900 uppercase italic tracking-tighter">{t.title}</h2>
-            <p className="text-slate-400 font-bold text-[10px] md:text-xs uppercase tracking-widest">{t.subtitle}</p>
+    <div className="max-w-[1600px] mx-auto space-y-6 animate-in fade-in zoom-in duration-500">
+      {/* Header Profile - Glass Look */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white/5 backdrop-blur-xl p-6 rounded-[2.5rem] border border-white/10 shadow-2xl">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-purple-600 rounded-2xl shadow-lg shadow-purple-600/20 text-white shrink-0">
+              <User size={28} />
+          </div>
+          <div>
+              <h2 className="text-2xl font-black text-white uppercase italic leading-none">{t.title}</h2>
+              <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-2">{t.subtitle}</p>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 items-start">
-        <div className="lg:col-span-8 space-y-6 md:space-y-8 order-2 lg:order-1">
-          <div className="bg-white p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] shadow-xl border border-slate-100 relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-8 opacity-5 hidden sm:block text-slate-900">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Form Column */}
+        <div className="lg:col-span-8 space-y-6 order-2 lg:order-1">
+          {/* Basic Info Panel */}
+          <div className="bg-white/5 backdrop-blur-xl p-8 md:p-10 rounded-[3rem] shadow-2xl border border-white/10 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-8 opacity-5 hidden sm:block text-white transition-transform group-hover:rotate-12 duration-700">
                 <Settings size={120} />
             </div>
 
-            <div className="flex items-center gap-3 mb-6 md:mb-8 relative">
-              <div className="w-1.5 h-6 bg-purple-600 rounded-full"></div>
-              <h4 className="text-lg md:text-xl font-black text-slate-900 uppercase italic tracking-tighter">{t.basicInfo}</h4>
+            <div className="flex items-center gap-3 mb-8 relative">
+              <div className="w-1.5 h-6 bg-purple-600 rounded-full shadow-[0_0_15px_rgba(147,51,234,0.5)]"></div>
+              <h4 className="text-lg md:text-xl font-black text-white uppercase italic tracking-tighter">{t.basicInfo}</h4>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 relative">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative">
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">{t.displayName}</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">{t.displayName}</label>
                 <input 
                   type="text" 
                   value={name} 
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full bg-slate-50 p-4 md:p-5 rounded-2xl border-2 border-transparent focus:border-purple-500 focus:bg-white outline-none font-bold transition-all text-slate-700 shadow-inner"
+                  className="w-full bg-white/5 p-4 md:p-5 rounded-2xl border border-white/10 focus:border-purple-500/50 focus:bg-white/10 outline-none font-bold transition-all text-white shadow-inner"
                 />
               </div>
 
               <div className="space-y-2 opacity-80">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">{t.emailLabel}</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">{t.emailLabel}</label>
                 <div className="relative">
                   <input 
                     type="text" 
                     value={String(userData?.email || "")} 
                     readOnly 
-                    className="w-full bg-slate-100 p-4 md:p-5 rounded-2xl border-2 border-slate-200 font-bold cursor-not-allowed text-slate-500 italic pr-12" 
+                    className="w-full bg-black/20 p-4 md:p-5 rounded-2xl border border-white/5 font-bold cursor-not-allowed text-slate-400 italic pr-12" 
                   />
-                  <ShieldCheck className="absolute right-4 top-4 md:right-5 md:top-5 text-slate-400" size={20} />
+                  <ShieldCheck className="absolute right-4 top-4 md:right-5 md:top-5 text-slate-500" size={20} />
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] shadow-xl border border-slate-100">
-            <div className="flex items-center gap-3 mb-6 md:mb-8">
-              <div className="w-1.5 h-6 bg-indigo-600 rounded-full"></div>
-              <h4 className="text-lg md:text-xl font-black text-slate-900 uppercase italic tracking-tighter">{t.customTitle}</h4>
+          {/* Avatar Customization Panel */}
+          <div className="bg-white/5 backdrop-blur-xl p-8 md:p-10 rounded-[3rem] shadow-2xl border border-white/10">
+            <div className="flex items-center gap-3 mb-8">
+              <div className="w-1.5 h-6 bg-indigo-600 rounded-full shadow-[0_0_15px_rgba(79,70,229,0.5)]"></div>
+              <h4 className="text-lg md:text-xl font-black text-white uppercase italic tracking-tighter">{t.customTitle}</h4>
             </div>
 
-            <div className="space-y-8 md:space-y-10">
+            <div className="space-y-10">
+              {/* Base Selection */}
               <div>
                 <div className="flex items-center gap-2 mb-4 text-slate-500">
                   <LayoutGrid size={16} /><span className="text-[10px] md:text-xs font-black uppercase tracking-widest">{t.selectBase}</span>
                 </div>
-                <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 md:gap-3">
+                <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
                   {avatarSeeds.map(s => (
                     <button key={s} type="button" onClick={() => setAvatarData({...avatarData, seed: s})} 
-                      className={`aspect-square rounded-xl md:rounded-2xl p-1 border-2 transition-all hover:scale-110 ${avatarData.seed === s ? 'border-purple-500 bg-purple-50 shadow-md ring-4 ring-purple-100' : 'border-slate-100 opacity-60 hover:opacity-100'}`}>
+                      className={`aspect-square rounded-2xl p-1 border transition-all hover:scale-110 ${avatarData.seed === s ? 'border-purple-500 bg-purple-500/20 shadow-[0_0_20px_rgba(147,51,234,0.3)] ring-2 ring-purple-500/50' : 'border-white/5 bg-white/5 opacity-60 hover:opacity-100'}`}>
                       <img src={`https://api.dicebear.com/9.x/toon-head/svg?seed=${s}`} alt={s} className="w-full h-full" />
                     </button>
                   ))}
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10">
+              {/* Styles & Options Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                 <div className="space-y-6">
                     <div className="space-y-4">
                         <div className="flex items-center gap-2 text-slate-500">
@@ -231,7 +231,7 @@ const ProfileSection = () => {
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                             {hairStyles.map(h => (
-                                <button key={h} onClick={() => setAvatarData({...avatarData, hair: h})} className={`py-3 px-3 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-tighter transition-all border-2 ${avatarData.hair === h ? 'bg-slate-900 text-white border-slate-900 shadow-lg' : 'bg-slate-50 text-slate-500 border-transparent hover:border-slate-200'}`}>
+                                <button key={h} onClick={() => setAvatarData({...avatarData, hair: h})} className={`py-3 px-3 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-tighter transition-all border ${avatarData.hair === h ? 'bg-white text-slate-900 border-white shadow-xl scale-[1.02]' : 'bg-white/5 text-slate-400 border-white/5 hover:border-white/20 hover:bg-white/10'}`}>
                                     {h}
                                 </button>
                             ))}
@@ -244,7 +244,7 @@ const ProfileSection = () => {
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                             {mouthStyles.map(m => (
-                                <button key={m} onClick={() => setAvatarData({...avatarData, mouth: m})} className={`py-3 px-3 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-tighter transition-all border-2 ${avatarData.mouth === m ? 'bg-slate-900 text-white border-slate-900 shadow-lg' : 'bg-slate-50 text-slate-500 border-transparent hover:border-slate-200'}`}>
+                                <button key={m} onClick={() => setAvatarData({...avatarData, mouth: m})} className={`py-3 px-3 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-tighter transition-all border ${avatarData.mouth === m ? 'bg-white text-slate-900 border-white shadow-xl scale-[1.02]' : 'bg-white/5 text-slate-400 border-white/5 hover:border-white/20 hover:bg-white/10'}`}>
                                     {m}
                                 </button>
                             ))}
@@ -257,7 +257,7 @@ const ProfileSection = () => {
                         </div>
                         <div className="grid grid-cols-3 gap-2">
                             {clothesStyles.map(c => (
-                                <button key={c} onClick={() => setAvatarData({...avatarData, clothes: c})} className={`py-3 px-1 rounded-xl text-[8px] md:text-[9px] font-black uppercase tracking-tighter transition-all border-2 ${avatarData.clothes === c ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg' : 'bg-slate-50 text-slate-500 border-transparent hover:border-slate-200'}`}>
+                                <button key={c} onClick={() => setAvatarData({...avatarData, clothes: c})} className={`py-3 px-1 rounded-xl text-[8px] md:text-[9px] font-black uppercase tracking-tighter transition-all border ${avatarData.clothes === c ? 'bg-indigo-600 text-white border-indigo-600 shadow-xl scale-[1.02]' : 'bg-white/5 text-slate-400 border-white/5 hover:border-white/20 hover:bg-white/10'}`}>
                                     {c}
                                 </button>
                             ))}
@@ -265,23 +265,23 @@ const ProfileSection = () => {
                     </div>
                 </div>
 
-                <div className="space-y-6 md:space-y-8">
+                <div className="space-y-8">
                     <div>
-                        <span className="text-[10px] md:text-xs font-black uppercase tracking-widest text-slate-500 block mb-4 italic">{t.hairColor}</span>
-                        <div className="flex flex-wrap gap-2 md:gap-3">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-4 italic">{t.hairColor}</span>
+                        <div className="flex flex-wrap gap-3">
                             {hairColors.map(c => (
                                 <button key={c} onClick={() => setAvatarData({...avatarData, hairColor: c})} 
-                                    className={`w-8 h-8 md:w-9 md:h-9 rounded-full border-4 transition-transform hover:scale-125 ${avatarData.hairColor === c ? 'border-purple-500 shadow-lg scale-110' : 'border-white shadow-sm'}`} style={{backgroundColor: `#${c}`}} />
+                                    className={`w-9 h-9 rounded-full border-2 transition-transform hover:scale-125 ${avatarData.hairColor === c ? 'border-white shadow-[0_0_15px_rgba(255,255,255,0.4)] scale-110' : 'border-transparent opacity-80'}`} style={{backgroundColor: `#${c}`}} />
                             ))}
                         </div>
                     </div>
 
                     <div>
-                        <span className="text-[10px] md:text-xs font-black uppercase tracking-widest text-slate-500 block mb-4 italic">{t.clothesColor}</span>
-                        <div className="flex flex-wrap gap-2 md:gap-3">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-4 italic">{t.clothesColor}</span>
+                        <div className="flex flex-wrap gap-3">
                             {clothesColors.map(c => (
                                 <button key={c} onClick={() => setAvatarData({...avatarData, clothesColor: c})} 
-                                    className={`w-8 h-8 md:w-9 md:h-9 rounded-full border-4 transition-transform hover:scale-125 ${avatarData.clothesColor === c ? 'border-purple-500 shadow-lg scale-110' : 'border-white shadow-sm'}`} style={{backgroundColor: `#${c}`}} />
+                                    className={`w-9 h-9 rounded-full border-2 transition-transform hover:scale-125 ${avatarData.clothesColor === c ? 'border-white shadow-[0_0_15px_rgba(255,255,255,0.4)] scale-110' : 'border-transparent opacity-80'}`} style={{backgroundColor: `#${c}`}} />
                             ))}
                         </div>
                     </div>
@@ -290,10 +290,10 @@ const ProfileSection = () => {
                         <div className="flex items-center gap-2 mb-4 text-slate-500">
                             <Palette size={16} /><span className="text-[10px] md:text-xs font-black uppercase tracking-widest">{t.bgColor}</span>
                         </div>
-                        <div className="flex flex-wrap gap-2 md:gap-3">
+                        <div className="flex flex-wrap gap-3">
                             {bgColors.map(c => (
                                 <button key={c.hex} onClick={() => setAvatarData({...avatarData, backgroundColor: c.hex})} 
-                                    className={`w-8 h-8 md:w-10 md:h-10 rounded-xl md:rounded-2xl border-4 transition-all hover:rotate-12 ${avatarData.backgroundColor === c.hex ? 'border-slate-900 scale-110 shadow-xl' : 'border-white shadow-sm'}`} style={{backgroundColor: `#${c.hex}`}} />
+                                    className={`w-10 h-10 rounded-2xl border-2 transition-all hover:rotate-12 ${avatarData.backgroundColor === c.hex ? 'border-white scale-110 shadow-2xl' : 'border-transparent opacity-60'}`} style={{backgroundColor: `#${c.hex}`}} />
                             ))}
                         </div>
                     </div>
@@ -303,37 +303,38 @@ const ProfileSection = () => {
           </div>
         </div>
 
+        {/* Right Preview Column */}
         <div className="lg:col-span-4 lg:sticky lg:top-32 space-y-6 order-1 lg:order-2">
-          <div className="bg-white p-6 md:p-8 rounded-[2rem] md:rounded-[3rem] shadow-2xl border border-slate-100 flex flex-col items-center text-center relative overflow-hidden">
-            <div className="absolute -top-10 -left-10 w-24 h-24 md:w-32 md:h-32 bg-purple-50 rounded-full blur-3xl opacity-60"></div>
-            <div className="absolute -bottom-10 -right-10 w-24 h-24 md:w-32 md:h-32 bg-indigo-50 rounded-full blur-3xl opacity-60"></div>
+          <div className="bg-white/5 backdrop-blur-2xl p-8 rounded-[3rem] shadow-2xl border border-white/10 flex flex-col items-center text-center relative overflow-hidden group">
+            <div className="absolute -top-10 -left-10 w-32 h-32 bg-purple-600/10 rounded-full blur-3xl group-hover:bg-purple-600/20 transition-colors"></div>
+            <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-indigo-600/10 rounded-full blur-3xl group-hover:bg-indigo-600/20 transition-colors"></div>
 
             <div className="relative mb-6">
-              <div className="w-36 h-36 md:w-48 md:h-48 bg-slate-900 rounded-[2.5rem] md:rounded-[3rem] flex items-center justify-center border-4 md:border-8 border-slate-50 shadow-2xl overflow-hidden group">
+              <div className="w-48 h-48 bg-slate-950 rounded-[3rem] flex items-center justify-center border-8 border-white/5 shadow-2xl overflow-hidden">
                 <img 
                   src={getAvatarUrl(avatarData)} 
                   alt="Avatar Preview" 
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
                 />
               </div>
-              <div className="absolute -bottom-1 -right-1 md:-bottom-2 md:-right-2 bg-emerald-500 text-white p-2 md:p-3 rounded-xl md:rounded-2xl border-4 border-white shadow-lg animate-bounce">
-                <Sparkles size={20} className="md:w-6 md:h-6" />
+              <div className="absolute -bottom-2 -right-2 bg-emerald-500 text-white p-3 rounded-2xl border-4 border-slate-900 shadow-xl animate-bounce">
+                <Sparkles size={24} />
               </div>
             </div>
 
-            <span className="px-4 py-1.5 bg-purple-600 text-white rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-purple-200">
+            <span className="px-4 py-1.5 bg-purple-600 text-white rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-purple-600/20">
               {String(userData?.role || 'Customer')} Member
             </span>
             
-            <h3 className="text-2xl md:text-3xl font-black text-slate-900 uppercase italic tracking-tighter mt-6 truncate w-full px-2">
+            <h3 className="text-3xl font-black text-white uppercase italic tracking-tighter mt-6 truncate w-full px-2">
               {String(name || "User")}
             </h3>
-            <p className="text-slate-400 font-bold text-[10px] md:text-xs uppercase tracking-widest mt-1 mb-8 truncate w-full px-4">{String(userData?.email || "")}</p>
+            <p className="text-slate-500 font-bold text-xs uppercase tracking-widest mt-1 mb-8 truncate w-full px-4">{String(userData?.email || "")}</p>
 
             <button 
                 onClick={handleSave}
                 disabled={isUpdating}
-                className="w-full bg-slate-900 text-white py-5 md:py-6 rounded-2xl md:rounded-[2rem] font-black uppercase text-[10px] md:text-xs tracking-[0.2em] hover:bg-purple-600 active:scale-95 transition-all flex items-center justify-center gap-3 shadow-xl disabled:opacity-50"
+                className="w-full bg-purple-600 text-white py-6 rounded-[2rem] font-black uppercase text-xs tracking-[0.2em] hover:bg-white hover:text-purple-900 active:scale-95 transition-all flex items-center justify-center gap-3 shadow-2xl disabled:opacity-50"
             >
                 {isUpdating ? <Loader2 className="animate-spin" size={20} /> : (
                     <>
@@ -344,10 +345,10 @@ const ProfileSection = () => {
             </button>
           </div>
 
-          <div className="bg-gradient-to-br from-indigo-600 to-purple-700 p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] text-white shadow-xl relative overflow-hidden group">
+          <div className="bg-gradient-to-br from-indigo-600 to-purple-700 p-8 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden group">
               <Camera className="absolute -right-4 -bottom-4 text-white/10 group-hover:scale-150 transition-transform duration-700" size={100} />
-              <h5 className="font-black uppercase italic tracking-tighter text-base md:text-lg mb-2 relative">Pro Tip!</h5>
-              <p className="text-[10px] md:text-xs font-bold text-white/80 leading-relaxed relative">
+              <h5 className="font-black uppercase italic tracking-tighter text-lg mb-2 relative">Pro Tip!</h5>
+              <p className="text-xs font-bold text-white/80 leading-relaxed relative">
                 {t.proTip}
               </p>
           </div>
