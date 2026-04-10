@@ -49,6 +49,7 @@ const ManageConcert = () => {
     fetchData();
   }, [navigate]);
 
+  // AUTO SCROLL TO TOP SAAT PAGINATION BERUBAH
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentPage]);
@@ -71,7 +72,13 @@ const ManageConcert = () => {
 
   // HELPER UNTUK PARSING JUDUL MULTI-BAHASA
   const renderTitle = (titleRaw) => {
+    if (!titleRaw) return "Untitled Event";
     try {
+      // Cek jika titleRaw sudah berupa objek
+      if (typeof titleRaw === 'object') {
+        return titleRaw.id || titleRaw.en || "Untitled Event";
+      }
+      // Cek jika titleRaw adalah string JSON
       const parsed = JSON.parse(titleRaw);
       return parsed.id || parsed.en || "Untitled Event";
     } catch (e) {
@@ -86,7 +93,6 @@ const ManageConcert = () => {
       .sort((a, b) => (b.id || 0) - (a.id || 0))
       .filter(c => {
         const search = searchQuery.toLowerCase();
-        // Gunakan renderTitle agar pencarian juga bekerja pada teks yang sudah diparsing
         const title = renderTitle(c?.title).toLowerCase();
         const locationName = (c?.location_name || c?.location?.location_name || c?.location || "").toLowerCase();
         const categoryName = (c?.category_name || c?.category?.category_name || c?.category || "").toLowerCase();
@@ -159,8 +165,9 @@ const ManageConcert = () => {
       {/* CONCERT CARDS GRID */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 text-left">
           {currentItems.map((concert) => {
+              // Menghitung sisa tiket yang bisa dibeli
               const totalQuota = Array.isArray(concert.ticket_types) 
-                ? concert.ticket_types.reduce((acc, curr) => acc + (Number(curr.total_quota) || 0), 0)
+                ? concert.ticket_types.reduce((acc, curr) => acc + (Number(curr.remaining_quota) || 0), 0)
                 : 0;
 
               const prices = Array.isArray(concert.ticket_types) 
@@ -197,14 +204,14 @@ const ManageConcert = () => {
 
                     {/* Body Content */}
                     <div className="p-4 md:p-5 flex flex-col flex-1 relative">
+                        {/* BADGE TOTAL QUOTA */}
                         <div className="absolute -top-7 right-4 bg-slate-900 text-white p-2 md:p-2.5 rounded-2xl shadow-xl border-2 border-white text-center min-w-[50px] md:min-w-[60px] z-10">
                             <span className="block text-xs md:text-sm font-black leading-none">
                               {totalQuota}
                             </span>
-                            <span className="text-[5px] md:text-[6px] font-bold uppercase text-white/40 tracking-tighter">Total Seats</span>
+                            <span className="text-[5px] md:text-[6px] font-bold uppercase text-white/40 tracking-tighter">Total Quota</span>
                         </div>
 
-                        {/* PERBAIKAN: Memanggil fungsi renderTitle agar JSON tidak tampil mentah */}
                         <h3 className="text-sm md:text-base font-black text-slate-900 uppercase italic leading-tight tracking-tighter truncate mb-3 mt-1">
                             {renderTitle(concert.title)}
                         </h3>
