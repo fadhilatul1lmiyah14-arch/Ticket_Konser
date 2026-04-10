@@ -35,7 +35,7 @@ const Events = () => {
   const t = {
     id: {
       hero_1: "TEMUKAN",
-      hero_2: "BEATMU SEKARANG",
+      hero_2: "KONSERMU SEKARANG",
       loc_label: "Lokasi Konser",
       cat_label: "Genre / Kategori",
       sort_label: "Urutkan Berdasarkan",
@@ -47,7 +47,7 @@ const Events = () => {
     },
     en: {
       hero_1: "FIND YOUR",
-      hero_2: "BEAT NOW",
+      hero_2: "CONCERT NOW",
       loc_label: "Concert Location",
       cat_label: "Genre / Category",
       sort_label: "Sort By",
