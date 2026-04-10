@@ -71,7 +71,7 @@ const ProfileSection = () => {
     return translations[lang] || translations.id;
   }, [lang]);
 
-  const avatarSeeds = ['Felix', 'Ab', 'Abcd', 'Jack', 'Avery', 'Luna', 'Milo', 'Oliver', 'Bella', 'Jasp', 'Le', 'Maya', 'Nina', 'Oscar', 'Penny', 'Quinn'];
+  const avatarSeeds = ['Felix', 'Ab', 'dae', 'Jack', 'Avery', 'imut', 'simut', 'Oliver', 'Bell', 'Jasp', 'Le', 'help', 'habibi', 'yanto', 'tasya', 'Quinn'];
   const hairStyles = ['bun', 'sideComed', 'spiky', 'undercut'];
   const hairColors = ['2c1b18', '724133', 'a55728', 'd6863b', 'f59797', 'c93305', 'e9b4b4'];
   const mouthStyles = ['angry', 'laugh', 'sad', 'smile'];
