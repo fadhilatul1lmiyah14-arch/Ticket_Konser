@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ShoppingCart, Instagram, Twitter, Facebook, Mail, User, LogOut, Search, X, Menu, ChevronDown } from 'lucide-react';
+import { ShoppingCart, Instagram, Twitter, Facebook, Mail, User, LogOut, Search, X, Menu, ChevronDown, ChevronUp } from 'lucide-react';
 import logo from '../assets/logo.png'; 
 import PremiumBackground from '../components/PremiumBackground';
 
@@ -53,7 +53,6 @@ const MainLayout = ({ children }) => {
     }
   }[lang];
 
-  // URL Bendera (Menggunakan Circle Flags agar bulat sempurna)
   const flags = {
     id: "https://flagcdn.com/w40/id.png",
     en: "https://flagcdn.com/w40/gb.png"
@@ -63,7 +62,6 @@ const MainLayout = ({ children }) => {
     e.target.style.opacity = '0';
   };
 
-  // --- SYNC USER DATA ---
   const syncUserData = useCallback(() => {
     const token = localStorage.getItem('token') || localStorage.getItem('accessToken'); 
     const storedUser = localStorage.getItem('user'); 
@@ -193,33 +191,37 @@ const MainLayout = ({ children }) => {
               <Link to="/events" className={`transition ${location.pathname === '/events' ? 'text-purple-400' : 'text-white hover:text-purple-400'}`}>{t.events}</Link>
             </div>
             
-            {/* LANG DROPDOWN (ONLY FLAGS) */}
+            {/* LANG DROPDOWN - IMPROVED SIZE & STYLE */}
             <div className="relative">
               <button 
                 onClick={() => setShowLangDropdown(!showLangDropdown)}
-                className="flex items-center gap-2 bg-slate-800/40 border border-slate-700 px-2 py-1.5 rounded-xl hover:bg-slate-700 transition-all"
+                className="flex items-center gap-2 bg-slate-900/40 border border-white/10 px-2.5 py-1.5 rounded-xl hover:bg-slate-800 transition-all"
               >
-                <img src={flags[lang]} alt={lang} className="w-6 h-6 rounded-full object-cover border border-slate-600" />
-                <ChevronDown size={14} className={`text-slate-400 transition-transform ${showLangDropdown ? 'rotate-180' : ''}`} />
+                <img src={flags[lang]} alt={lang} className="w-5 h-5 rounded-full object-cover border border-slate-700 shadow-md" />
+                {showLangDropdown ? (
+                  <ChevronUp size={14} className="text-white" />
+                ) : (
+                  <ChevronDown size={14} className="text-white" />
+                )}
               </button>
 
               {showLangDropdown && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setShowLangDropdown(false)}></div>
-                  <div className="absolute right-0 mt-3 w-52 bg-white rounded-2xl shadow-2xl py-2 border border-slate-100 animate-in fade-in slide-in-from-top-2 duration-200 z-20 overflow-hidden">
+                  <div className="absolute right-0 mt-3 w-48 bg-[#0f172a]/95 backdrop-blur-xl rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] py-2 border border-white/10 animate-in fade-in zoom-in-95 duration-200 z-20 overflow-hidden">
                     <button 
                       onClick={() => changeLanguage('id')}
-                      className={`w-full flex items-center gap-3 px-4 py-3 text-left transition ${lang === 'id' ? 'bg-slate-50' : 'hover:bg-slate-50'}`}
+                      className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all ${lang === 'id' ? 'bg-purple-600/30' : 'hover:bg-white/5'}`}
                     >
-                      <img src={flags.id} alt="ID" className="w-6 h-6 rounded-full object-cover shadow-sm" />
-                      <span className={`text-xs font-black uppercase tracking-wider ${lang === 'id' ? 'text-slate-900' : 'text-slate-500'}`}>Bahasa Indonesia</span>
+                      <img src={flags.id} alt="ID" className="w-5 h-5 rounded-full object-cover border border-slate-700" />
+                      <span className={`text-[11px] font-black uppercase tracking-wider ${lang === 'id' ? 'text-purple-400' : 'text-white'}`}>Bahasa Indonesia</span>
                     </button>
                     <button 
                       onClick={() => changeLanguage('en')}
-                      className={`w-full flex items-center gap-3 px-4 py-3 text-left transition ${lang === 'en' ? 'bg-slate-50' : 'hover:bg-slate-50'}`}
+                      className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all ${lang === 'en' ? 'bg-purple-600/30' : 'hover:bg-white/5'}`}
                     >
-                      <img src={flags.en} alt="EN" className="w-6 h-6 rounded-full object-cover shadow-sm" />
-                      <span className={`text-xs font-black uppercase tracking-wider ${lang === 'en' ? 'text-slate-900' : 'text-slate-500'}`}>English</span>
+                      <img src={flags.en} alt="EN" className="w-5 h-5 rounded-full object-cover border border-slate-700" />
+                      <span className={`text-[11px] font-black uppercase tracking-wider ${lang === 'en' ? 'text-purple-400' : 'text-white'}`}>English</span>
                     </button>
                   </div>
                 </>
@@ -257,12 +259,11 @@ const MainLayout = ({ children }) => {
                   </div>
                 </button>
 
-                {/* DROPDOWN MENU USER */}
                 {showDropdown && (
                   <>
                     <div className="fixed inset-0 z-10" onClick={() => setShowDropdown(false)}></div>
-                    <div className="absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-2xl py-2 border border-slate-100 animate-in fade-in slide-in-from-top-2 duration-300 z-20 overflow-hidden">
-                      <div className="px-5 py-4 border-b border-slate-50 bg-slate-50/50 mb-1 text-left">
+                    <div className="absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-2xl py-2 border border-slate-100 animate-in fade-in slide-in-from-top-2 duration-300 z-20 overflow-hidden text-left">
+                      <div className="px-5 py-4 border-b border-slate-50 bg-slate-50/50 mb-1">
                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Authenticated As</p>
                         <p className="text-xs font-black text-slate-900 truncate">{userData?.name || 'User'}</p>
                       </div>
@@ -324,7 +325,6 @@ const MainLayout = ({ children }) => {
           </div>
         )}
 
-        {/* MAIN CONTENT */}
         <main className="flex-1 pt-[73px]">
           {children}
         </main>
