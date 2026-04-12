@@ -1,5 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { User, Shield, Save, RefreshCw, CheckCircle2, LayoutGrid, Palette, Scissors, Smile, Sparkles } from 'lucide-react';
+import { 
+  User, 
+  Shield, 
+  Save, 
+  RefreshCw, 
+  CheckCircle2, 
+  LayoutGrid, 
+  Palette, 
+  Scissors, 
+  Smile, 
+  Sparkles,
+  Crown,
+  Star,
+  ArrowRight,
+  Lock,
+  Mail
+} from 'lucide-react';
 
 const Profile = () => {
   const [formData, setFormData] = useState({
@@ -78,45 +94,72 @@ const Profile = () => {
   };
 
   return (
-    <div className="bg-[#F8FAFC] min-h-screen p-4 sm:p-6 md:p-12 font-sans overflow-x-hidden">
-      <div className="max-w-6xl mx-auto">
+    <div className="bg-white min-h-screen p-4 sm:p-6 md:p-12 font-sans overflow-x-hidden animate-fade-in-up">
+      
+      {/* Premium Background Decor */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden -z-10">
+        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-gradient-to-br from-purple-100/15 via-pink-100/10 to-transparent rounded-full blur-[100px] animate-pulse-slow"></div>
+        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-gradient-to-tl from-indigo-100/15 via-purple-100/10 to-transparent rounded-full blur-[100px] animate-pulse-slow-delay"></div>
+        <div className="absolute top-[15%] left-[5%] animate-float-slow">
+          <Star size={16} className="text-purple-200/30" fill="currentColor" />
+        </div>
+        <div className="absolute bottom-[20%] right-[8%] animate-float-delay">
+          <Star size={12} className="text-pink-200/30" fill="currentColor" />
+        </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto relative z-10">
+        {/* Header Section - Premium */}
         <header className="mb-8 md:mb-10 text-center md:text-left">
-          <div className="flex items-center justify-center md:justify-start gap-3 mb-2">
-            <div className="p-2 bg-slate-900 rounded-lg text-white"><User size={18} /></div>
-            <h2 className="text-[9px] md:text-[10px] font-black text-[#E297C1] uppercase tracking-[0.4em]">Identity Management</h2>
+          <div className="inline-flex items-center justify-center md:justify-start gap-2 bg-gradient-to-r from-purple-50 to-pink-50 px-4 py-2 rounded-full border border-purple-100 mb-3">
+            <div className="p-1 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg text-white shadow-md">
+              <Crown size={12} />
+            </div>
+            <span className="text-[8px] md:text-[9px] font-black text-purple-600 uppercase tracking-[0.3em]">Admin Portal</span>
+            <Sparkles size={10} className="text-purple-400 animate-pulse" />
           </div>
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-slate-900 uppercase italic tracking-tighter leading-none">
-            Admin <span className="text-transparent bg-clip-text bg-gradient-to-r from-slate-900 to-slate-400 font-light">Profile</span>
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-black uppercase italic tracking-tighter leading-none">
+            <span className="text-slate-800">Admin</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 ml-2 bg-[length:200%_auto] animate-gradient-x">Profile</span>
           </h1>
+          <div className="w-20 h-1 bg-gradient-to-r from-purple-500 to-pink-500 mt-4 mx-auto md:mx-0 rounded-full animate-slide-in"></div>
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
           {/* LEFT: Customizer */}
           <div className="lg:col-span-5 order-2 lg:order-1">
-            <div className="bg-white rounded-[30px] md:rounded-[40px] p-6 md:p-8 shadow-2xl border border-white h-full">
+            <div className="bg-white rounded-[30px] md:rounded-[40px] p-6 md:p-8 shadow-2xl shadow-purple-100/40 border border-purple-100 h-full relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-100/30 to-pink-100/30 rounded-full blur-2xl"></div>
+              
               <div className="relative w-32 h-32 md:w-44 md:h-44 mx-auto mb-6">
-                <div className="w-full h-full bg-slate-900 rounded-[28px] md:rounded-[38px] p-1 overflow-hidden border-4 border-[#E297C1]/20 group">
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-[28px] md:rounded-[38px] blur-xl opacity-30"></div>
+                <div className="relative w-full h-full bg-gradient-to-br from-slate-100 to-white rounded-[28px] md:rounded-[38px] p-1 overflow-hidden border-2 border-purple-200 shadow-xl group-hover:shadow-2xl transition-all duration-500">
                   <img 
                     src={getAvatarUrl(formData)} 
                     alt="Avatar" 
-                    className="w-full h-full object-cover rounded-[22px] md:rounded-[30px] transition-transform group-hover:scale-110 duration-500" 
+                    className="w-full h-full object-cover rounded-[22px] md:rounded-[30px] transition-transform group-hover:scale-110 duration-700" 
                   />
                 </div>
-                <div className="absolute -bottom-1 -right-1 md:-bottom-2 md:-right-2 bg-[#E297C1] text-white p-2 md:p-2.5 rounded-xl md:rounded-2xl shadow-lg border-4 border-white animate-pulse">
-                  <CheckCircle2 size={16} className="md:w-5 md:h-5" />
+                <div className="absolute -bottom-1 -right-1 md:-bottom-2 md:-right-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white p-2 md:p-2.5 rounded-xl md:rounded-2xl shadow-lg border-4 border-white">
+                  <Star size={16} className="md:w-5 md:h-5" fill="currentColor" />
                 </div>
               </div>
 
               <div className="space-y-6 md:max-h-[500px] lg:max-h-[450px] overflow-y-auto pr-2 custom-scrollbar">
                 {/* Seed Selection */}
                 <div>
-                  <div className="flex items-center gap-2 mb-3 justify-center text-slate-400">
-                    <LayoutGrid size={14} /><span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest">Base Character</span>
+                  <div className="flex items-center gap-2 mb-3 justify-center">
+                    <LayoutGrid size={14} className="text-purple-500" />
+                    <span className="text-[9px] md:text-[10px] font-black text-slate-500 uppercase tracking-widest">Base Character</span>
                   </div>
                   <div className="grid grid-cols-4 sm:grid-cols-8 lg:grid-cols-4 gap-2">
                     {avatarSeeds.map(s => (
                       <button key={s} type="button" onClick={() => setFormData({...formData, avatarSeed: s})} 
-                        className={`aspect-square rounded-xl p-1 border-2 transition-all hover:scale-105 ${formData.avatarSeed === s ? 'border-[#E297C1] bg-pink-50 ring-2 ring-pink-100' : 'border-slate-100 opacity-60'}`}>
+                        className={`aspect-square rounded-xl p-1 border-2 transition-all hover:scale-105 ${
+                          formData.avatarSeed === s 
+                            ? 'border-purple-500 bg-purple-50 ring-2 ring-purple-200 shadow-md' 
+                            : 'border-slate-100 opacity-60 hover:opacity-100'
+                        }`}>
                         <img src={`https://api.dicebear.com/9.x/toon-head/svg?seed=${s}`} alt={s} className="w-full h-full" />
                       </button>
                     ))}
@@ -124,29 +167,40 @@ const Profile = () => {
                 </div>
 
                 {/* Hair & Expression Selection */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-slate-100">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-purple-100">
                   <div>
-                    <div className="flex items-center gap-2 mb-2 text-slate-400">
-                      <Scissors size={14} /><span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest">Hair Style</span>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Scissors size={14} className="text-purple-500" />
+                      <span className="text-[9px] md:text-[10px] font-black text-slate-500 uppercase tracking-widest">Hair Style</span>
                     </div>
-                    <select value={formData.hair} onChange={(e) => setFormData({...formData, hair: e.target.value})} className="w-full text-[11px] font-bold p-3 bg-slate-50 rounded-xl border-none outline-none focus:ring-2 focus:ring-pink-200">
+                    <select 
+                      value={formData.hair} 
+                      onChange={(e) => setFormData({...formData, hair: e.target.value})} 
+                      className="w-full text-[11px] font-bold p-3 bg-gradient-to-r from-slate-50 to-white rounded-xl border border-purple-100 outline-none focus:ring-2 focus:ring-purple-300 focus:border-transparent text-slate-700 cursor-pointer"
+                    >
                       {hairStyles.map(h => <option key={h} value={h}>{h.toUpperCase()}</option>)}
                     </select>
                   </div>
                   <div>
-                    <div className="flex items-center gap-2 mb-2 text-slate-400">
-                      <Smile size={14} /><span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest">Expression</span>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Smile size={14} className="text-purple-500" />
+                      <span className="text-[9px] md:text-[10px] font-black text-slate-500 uppercase tracking-widest">Expression</span>
                     </div>
-                    <select value={formData.mouth} onChange={(e) => setFormData({...formData, mouth: e.target.value})} className="w-full text-[11px] font-bold p-3 bg-slate-50 rounded-xl border-none outline-none focus:ring-2 focus:ring-pink-200">
+                    <select 
+                      value={formData.mouth} 
+                      onChange={(e) => setFormData({...formData, mouth: e.target.value})} 
+                      className="w-full text-[11px] font-bold p-3 bg-gradient-to-r from-slate-50 to-white rounded-xl border border-purple-100 outline-none focus:ring-2 focus:ring-purple-300 focus:border-transparent text-slate-700 cursor-pointer"
+                    >
                       {mouthStyles.map(m => <option key={m} value={m}>{m.toUpperCase()}</option>)}
                     </select>
                   </div>
                 </div>
 
                 {/* Clothes Style Selection */}
-                <div className="pt-4 border-t border-slate-100">
-                  <div className="flex items-center gap-2 mb-3 text-slate-400 justify-center">
-                    <Sparkles size={14} /><span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest">Clothes Style</span>
+                <div className="pt-4 border-t border-purple-100">
+                  <div className="flex items-center gap-2 mb-3 justify-center">
+                    <Sparkles size={14} className="text-purple-500" />
+                    <span className="text-[9px] md:text-[10px] font-black text-slate-500 uppercase tracking-widest">Clothes Style</span>
                   </div>
                   <div className="grid grid-cols-3 gap-2">
                     {clothesStyles.map(c => (
@@ -154,7 +208,11 @@ const Profile = () => {
                         key={c} 
                         type="button"
                         onClick={() => setFormData({...formData, clothes: c})} 
-                        className={`py-2 px-1 rounded-xl border-2 text-[8px] md:text-[10px] font-black uppercase transition-all ${formData.clothes === c ? 'bg-slate-900 text-white border-slate-900 shadow-md' : 'bg-slate-50 text-slate-400 border-transparent hover:border-slate-200'}`}
+                        className={`py-2 px-1 rounded-xl border-2 text-[8px] md:text-[10px] font-black uppercase transition-all ${
+                          formData.clothes === c 
+                            ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white border-transparent shadow-md' 
+                            : 'bg-slate-50 text-slate-400 border-slate-100 hover:border-purple-200 hover:bg-purple-50'
+                        }`}
                       >
                         {c}
                       </button>
@@ -163,33 +221,51 @@ const Profile = () => {
                 </div>
 
                 {/* Colors Selection */}
-                <div className="space-y-4 pt-4 border-t border-slate-100">
+                <div className="space-y-4 pt-4 border-t border-purple-100">
                   <div>
-                    <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-2 text-center">Hair Tone</span>
+                    <span className="text-[9px] md:text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2 text-center">Hair Tone</span>
                     <div className="flex gap-2 justify-center flex-wrap">
                       {hairColors.map(c => (
                         <button key={c} type="button" onClick={() => setFormData({...formData, hairColor: c})} 
-                          className={`w-6 h-6 md:w-7 md:h-7 rounded-full border-4 transition-transform hover:scale-110 ${formData.hairColor === c ? 'border-[#E297C1] shadow-lg' : 'border-white'}`} style={{backgroundColor: `#${c}`}} />
+                          className={`w-6 h-6 md:w-7 md:h-7 rounded-full border-3 transition-transform hover:scale-110 ${
+                            formData.hairColor === c 
+                              ? 'border-purple-500 shadow-lg ring-2 ring-purple-200' 
+                              : 'border-white shadow-sm'
+                          }`} 
+                          style={{backgroundColor: `#${c}`}} />
                       ))}
                     </div>
                   </div>
                   
                   <div>
-                    <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-2 text-center">Outfit Palette</span>
+                    <span className="text-[9px] md:text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2 text-center">Outfit Palette</span>
                     <div className="flex gap-2 justify-center flex-wrap">
                       {clothesColors.map(c => (
                         <button key={c} type="button" onClick={() => setFormData({...formData, clothesColor: c})} 
-                          className={`w-6 h-6 md:w-7 md:h-7 rounded-full border-4 transition-transform hover:scale-110 ${formData.clothesColor === c ? 'border-[#E297C1] shadow-lg' : 'border-white'}`} style={{backgroundColor: `#${c}`}} />
+                          className={`w-6 h-6 md:w-7 md:h-7 rounded-full border-3 transition-transform hover:scale-110 ${
+                            formData.clothesColor === c 
+                              ? 'border-purple-500 shadow-lg ring-2 ring-purple-200' 
+                              : 'border-white shadow-sm'
+                          }`} 
+                          style={{backgroundColor: `#${c}`}} />
                       ))}
                     </div>
                   </div>
 
                   <div>
-                    <div className="flex items-center gap-2 mb-2 justify-center text-slate-400"><Palette size={14} /><span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest">Background Aura</span></div>
+                    <div className="flex items-center gap-2 mb-2 justify-center">
+                      <Palette size={14} className="text-purple-500" />
+                      <span className="text-[9px] md:text-[10px] font-black text-slate-500 uppercase tracking-widest">Background Aura</span>
+                    </div>
                     <div className="flex flex-wrap gap-2 justify-center">
                       {bgColors.map(c => (
                         <button key={c.hex} type="button" onClick={() => setFormData({...formData, avatarBg: c.hex})} 
-                          className={`w-6 h-6 md:w-7 md:h-7 rounded-lg md:rounded-xl border-4 transition-all hover:rotate-12 ${formData.avatarBg === c.hex ? 'border-slate-900 shadow-md scale-110' : 'border-white'}`} style={{backgroundColor: `#${c.hex}`}} />
+                          className={`w-6 h-6 md:w-7 md:h-7 rounded-lg md:rounded-xl border-3 transition-all hover:rotate-12 ${
+                            formData.avatarBg === c.hex 
+                              ? 'border-purple-600 shadow-md scale-110 ring-2 ring-purple-200' 
+                              : 'border-white shadow-sm'
+                          }`} 
+                          style={{backgroundColor: `#${c.hex}`}} />
                       ))}
                     </div>
                   </div>
@@ -200,60 +276,73 @@ const Profile = () => {
 
           {/* RIGHT: Form */}
           <div className="lg:col-span-7 order-1 lg:order-2">
-            <form onSubmit={handleSave} className="bg-white rounded-[30px] md:rounded-[40px] p-6 md:p-10 shadow-2xl border border-white space-y-6 md:space-y-8 h-full flex flex-col">
-              <div className="flex items-center gap-3">
-                <div className="w-1.5 h-6 bg-[#E297C1] rounded-full"></div>
+            <form onSubmit={handleSave} className="bg-white rounded-[30px] md:rounded-[40px] p-6 md:p-10 shadow-2xl shadow-purple-100/40 border border-purple-100 space-y-6 md:space-y-8 h-full flex flex-col relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-100/30 to-pink-100/30 rounded-full blur-2xl"></div>
+              
+              <div className="flex items-center gap-3 relative">
+                <div className="w-1.5 h-6 bg-gradient-to-b from-purple-500 to-pink-500 rounded-full"></div>
                 <h3 className="font-black text-slate-800 uppercase italic text-lg md:text-xl">Account Credentials</h3>
               </div>
               
-              <div className="space-y-4 md:space-y-6">
+              <div className="space-y-4 md:space-y-6 relative">
                 <div className="space-y-2">
-                  <label className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Display Name</label>
+                  <label className="text-[9px] md:text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2 flex items-center gap-2">
+                    <User size={12} className="text-purple-500" />
+                    Display Name
+                  </label>
                   <input 
                     type="text" 
                     value={formData.name} 
                     onChange={(e) => setFormData({...formData, name: e.target.value})} 
-                    className="w-full bg-slate-50 border-2 border-transparent rounded-xl md:rounded-2xl py-3 md:py-4 px-4 md:px-6 outline-none focus:border-[#E297C1] focus:bg-white font-bold text-slate-700 transition-all text-sm md:text-base" 
+                    className="w-full bg-gradient-to-r from-slate-50 to-white border-2 border-purple-100 rounded-xl md:rounded-2xl py-3 md:py-4 px-4 md:px-6 outline-none focus:border-purple-400 focus:bg-white font-bold text-slate-700 transition-all text-sm md:text-base shadow-inner" 
                     required 
                   />
                 </div>
                 
-                <div className="space-y-2 opacity-60">
-                  <label className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Email Access</label>
+                <div className="space-y-2">
+                  <label className="text-[9px] md:text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2 flex items-center gap-2">
+                    <Mail size={12} className="text-purple-500" />
+                    Email Access
+                  </label>
                   <div className="relative">
                     <input 
                       type="email" 
                       value={formData.email} 
                       disabled 
-                      className="w-full bg-slate-100 border-2 border-slate-100 rounded-xl md:rounded-2xl py-3 md:py-4 px-4 md:px-6 font-bold text-slate-400 cursor-not-allowed italic text-sm md:text-base" 
+                      className="w-full bg-slate-100 border-2 border-slate-200 rounded-xl md:rounded-2xl py-3 md:py-4 px-4 md:px-6 font-bold text-slate-500 cursor-not-allowed italic text-sm md:text-base" 
                     />
-                    <Shield size={16} className="absolute right-4 md:right-5 top-1/2 -translate-y-1/2 text-slate-300" />
+                    <Shield size={16} className="absolute right-4 md:right-5 top-1/2 -translate-y-1/2 text-purple-400" />
                   </div>
                 </div>
               </div>
 
-              <div className="p-4 md:p-6 bg-slate-900 rounded-[25px] md:rounded-[32px] flex flex-col sm:flex-row gap-4 sm:gap-5 items-center">
-                <div className="w-10 h-10 md:w-12 md:h-12 bg-[#E297C1]/20 rounded-xl md:rounded-2xl flex items-center justify-center shrink-0">
-                  <Shield className="text-[#E297C1]" size={20} md:size={24} />
+              <div className="p-4 md:p-6 bg-gradient-to-r from-purple-50 to-pink-50 rounded-[25px] md:rounded-[32px] flex flex-col sm:flex-row gap-4 sm:gap-5 items-center relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-20 h-20 bg-purple-200/30 rounded-full blur-xl"></div>
+                <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl md:rounded-2xl flex items-center justify-center shrink-0 shadow-lg">
+                  <Lock size={20} className="text-white" />
                 </div>
-                <div className="text-center sm:text-left">
-                  <h4 className="text-[10px] md:text-[11px] font-black text-white uppercase tracking-wider">Visual Identity Synced</h4>
-                  <p className="text-[9px] md:text-[10px] text-white/40 font-medium leading-relaxed mt-1">Toon-head modifications are reflected across the entire administrative node.</p>
+                <div className="text-center sm:text-left relative z-10">
+                  <h4 className="text-[10px] md:text-[11px] font-black text-purple-800 uppercase tracking-wider">Visual Identity Synced</h4>
+                  <p className="text-[9px] md:text-[10px] text-purple-600/60 font-medium leading-relaxed mt-1">
+                    Toon-head modifications are reflected across the entire administrative node.
+                  </p>
                 </div>
               </div>
 
-              <div className="pt-4 mt-auto">
+              <div className="pt-4 mt-auto relative">
                 <button 
                   type="submit" 
                   disabled={isSaving} 
-                  className="w-full bg-slate-900 text-white py-4 md:py-5 rounded-xl md:rounded-[22px] font-black uppercase text-[10px] md:text-[11px] tracking-[0.2em] hover:bg-[#E297C1] transition-all shadow-xl disabled:opacity-50 flex items-center justify-center gap-3 active:scale-95"
+                  className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-4 md:py-5 rounded-xl md:rounded-[22px] font-black uppercase text-[10px] md:text-[11px] tracking-[0.2em] hover:shadow-xl hover:shadow-purple-200/50 transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-3 active:scale-95 group relative overflow-hidden"
                 >
+                  <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-purple-500 to-pink-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></span>
                   {isSaving ? (
-                    <RefreshCw className="animate-spin" size={18} />
+                    <RefreshCw className="animate-spin relative z-10" size={18} />
                   ) : (
                     <>
-                      <Save size={18} /> 
-                      Sync Changes
+                      <Save size={18} className="relative z-10 group-hover:scale-110 transition-transform" /> 
+                      <span className="relative z-10">Sync Changes</span>
+                      <ArrowRight size={16} className="relative z-10 group-hover:translate-x-1 transition-transform" />
                     </>
                   )}
                 </button>
@@ -262,6 +351,85 @@ const Profile = () => {
           </div>
         </div>
       </div>
+
+      <style>{`
+        @keyframes fade-in-up {
+          from {
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        @keyframes slide-in {
+          from {
+            width: 0;
+            opacity: 0;
+          }
+          to {
+            width: 5rem;
+            opacity: 1;
+          }
+        }
+        @keyframes pulse-slow {
+          0%, 100% { opacity: 0.4; transform: scale(1); }
+          50% { opacity: 0.8; transform: scale(1.05); }
+        }
+        @keyframes pulse-slow-delay {
+          0%, 100% { opacity: 0.3; transform: scale(1); }
+          50% { opacity: 0.6; transform: scale(1.08); }
+        }
+        @keyframes float-slow {
+          0%, 100% { transform: translateY(0) rotate(0deg); }
+          50% { transform: translateY(-15px) rotate(5deg); }
+        }
+        @keyframes float-delay {
+          0%, 100% { transform: translateY(0) rotate(0deg); }
+          50% { transform: translateY(-10px) rotate(-5deg); }
+        }
+        @keyframes gradient-x {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+        .animate-fade-in-up {
+          animation: fade-in-up 0.6s cubic-bezier(0.2, 0.9, 0.4, 1.1) forwards;
+        }
+        .animate-slide-in {
+          animation: slide-in 0.8s ease-out forwards;
+        }
+        .animate-pulse-slow {
+          animation: pulse-slow 4s ease-in-out infinite;
+        }
+        .animate-pulse-slow-delay {
+          animation: pulse-slow-delay 5s ease-in-out infinite;
+        }
+        .animate-float-slow {
+          animation: float-slow 6s ease-in-out infinite;
+        }
+        .animate-float-delay {
+          animation: float-delay 5s ease-in-out infinite;
+        }
+        .animate-gradient-x {
+          background-size: 200% auto;
+          animation: gradient-x 3s ease infinite;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(139, 92, 246, 0.05);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: linear-gradient(to bottom, #a855f7, #ec4899);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(to bottom, #c084fc, #f472b6);
+        }
+      `}</style>
     </div>
   );
 };

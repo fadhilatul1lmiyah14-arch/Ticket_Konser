@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ShoppingCart, Instagram, Twitter, Facebook, Mail, User, LogOut, Search, X, Menu, ChevronDown, ChevronUp } from 'lucide-react';
+import { ShoppingCart, Instagram, Twitter, Facebook, Mail, User, LogOut, X, Menu, ChevronDown } from 'lucide-react';
 import logo from '../assets/logo.png'; 
 import PremiumBackground from '../components/PremiumBackground';
+import ThemeToggle from '../components/ThemeToggle'; // IMPORT THEME TOGGLE
 
 const MainLayout = ({ children }) => {
   const navigate = useNavigate();
@@ -13,10 +14,13 @@ const MainLayout = ({ children }) => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [showLangDropdown, setShowLangDropdown] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [navSearch, setNavSearch] = useState("");
   const [hasCartItems, setHasCartItems] = useState(false);
-  
-  // --- LOGIKA MULTI-BAHASA ---
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const savedTheme = localStorage.getItem('theme');
+    return savedTheme ? savedTheme === 'dark' : false;
+  });
+
+  // --- MULTI-LANGUAGE LOGIC ---
   const [lang, setLang] = useState(localStorage.getItem('lang') || 'id');
 
   const changeLanguage = (newLang) => {
@@ -27,45 +31,26 @@ const MainLayout = ({ children }) => {
   };
 
   const t = {
-    id: {
-      home: "Beranda",
-      events: "Acara",
-      search: "Cari Konser...",
-      signin: "Masuk",
-      account: "Akun",
-      dashboard: "Panel Pengguna",
-      logout: "Keluar",
-      footer_desc: "Partner terpercaya Anda untuk mengamankan kursi terbaik di konser favorit. Aman, cepat, dan handal.",
-      explore: "Eksplorasi",
-      follow: "Ikuti Kami"
+    id: { 
+      home: "Beranda", events: "Acara", signin: "Masuk", account: "Akun", 
+      dashboard: "Dasbor Pengguna", logout: "Keluar", explore: "Eksplorasi", follow: "Ikuti",
+      footer_desc: "Partner terpercaya Anda untuk mengamankan kursi terbaik di konser favorit." 
     },
-    en: {
-      home: "Home",
-      events: "Events",
-      search: "Search Events...",
-      signin: "Sign In",
-      account: "Account",
-      dashboard: "User Dashboard",
-      logout: "Logout",
-      footer_desc: "Your trusted partner for securing the best seats at your favorite concerts. Secure, fast, and reliable.",
-      explore: "Explore",
-      follow: "Follow Us"
+    en: { 
+      home: "Home", events: "Events", signin: "Sign In", account: "Account", 
+      dashboard: "UserDashboard", logout: "Logout", explore: "Explore", follow: "Follow",
+      footer_desc: "Your trusted partner for securing the best seats at your favorite concerts." 
     }
   }[lang];
 
-  const flags = {
-    id: "https://flagcdn.com/w40/id.png",
-    en: "https://flagcdn.com/w40/gb.png"
-  };
-
-  const handleImageError = (e) => {
-    e.target.style.opacity = '0';
+  const flags = { 
+    id: "https://flagcdn.com/w80/id.png", 
+    en: "https://flagcdn.com/w80/gb.png" 
   };
 
   const syncUserData = useCallback(() => {
     const token = localStorage.getItem('token') || localStorage.getItem('accessToken'); 
     const storedUser = localStorage.getItem('user'); 
-    
     if (token && storedUser) {
       setIsLoggedIn(true);
       try {
@@ -74,15 +59,8 @@ const MainLayout = ({ children }) => {
             parsed.avatar = `https://api.dicebear.com/9.x/toon-head/svg?seed=${parsed.avatar_seed}`;
         }
         setUserData(parsed);
-      } catch (e) {
-        console.error("Error parsing user data", e);
-        setUserData(null);
-        setIsLoggedIn(false);
-      }
-    } else {
-      setIsLoggedIn(false);
-      setUserData(null);
-    }
+      } catch (e) { setIsLoggedIn(false); }
+    } else { setIsLoggedIn(false); }
   }, []);
 
   const updateCartStatus = useCallback(() => {
@@ -91,39 +69,33 @@ const MainLayout = ({ children }) => {
       try {
         const parsed = JSON.parse(cartData);
         setHasCartItems(Array.isArray(parsed) ? parsed.length > 0 : !!parsed); 
-      } catch (e) {
-        setHasCartItems(false);
-      }
-    } else {
-      setHasCartItems(false);
-    }
+      } catch (e) { setHasCartItems(false); }
+    } else { setHasCartItems(false); }
   }, []);
-
-  const getAvatarUrl = (seed) => 
-    `https://api.dicebear.com/9.x/toon-head/svg?seed=${seed || 'Felix'}`;
 
   useEffect(() => {
     syncUserData();
     updateCartStatus();
     setIsMobileMenuOpen(false); 
-
     window.addEventListener('cartUpdated', updateCartStatus);
     window.addEventListener('storage', syncUserData);
-    window.addEventListener('profileUpdated', syncUserData);
-    window.addEventListener('loginSuccess', syncUserData);
-
     return () => {
       window.removeEventListener('cartUpdated', updateCartStatus);
       window.removeEventListener('storage', syncUserData);
-      window.removeEventListener('profileUpdated', syncUserData);
-      window.removeEventListener('loginSuccess', syncUserData);
     };
   }, [location.pathname, syncUserData, updateCartStatus]);
 
+  useEffect(() => {
+    const handleThemeChange = () => {
+      const savedTheme = localStorage.getItem('theme');
+      setIsDarkMode(savedTheme ? savedTheme === 'dark' : false);
+    };
+    window.addEventListener('themeChanged', handleThemeChange);
+    return () => window.removeEventListener('themeChanged', handleThemeChange);
+  }, []);
+
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('user');
+    localStorage.clear();
     setIsLoggedIn(false);
     setUserData(null);
     setShowDropdown(false);
@@ -131,259 +103,195 @@ const MainLayout = ({ children }) => {
     window.dispatchEvent(new Event('storage'));
   };
 
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    const term = navSearch.trim();
-    if (term) {
-      navigate(`/events?search=${encodeURIComponent(term)}`);
-    } else {
-      navigate('/events'); 
-    }
-    setIsMobileMenuOpen(false);
-  };
+  const themeClass = isDarkMode 
+    ? "bg-[#020617] text-white" 
+    : "bg-gradient-to-b from-[#F8FAFC] to-[#F1F5F9] text-slate-800"; 
+  
+  const navClass = isDarkMode 
+    ? "bg-[#020617]/80 backdrop-blur-xl border-slate-800" 
+    : "bg-white/85 backdrop-blur-xl border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.04)]";
 
-  const clearSearch = () => {
-    setNavSearch("");
-    if (location.pathname === '/events') {
-      navigate('/events');
-    }
-  };
+  const dropdownClass = isDarkMode
+    ? "bg-[#0f172a]/95 backdrop-blur-xl border-white/10"
+    : "bg-white/95 backdrop-blur-xl border-slate-100 shadow-[0_20px_40px_rgba(0,0,0,0.08)]";
+
+  const mobileMenuClass = isDarkMode
+    ? "bg-[#020617]"
+    : "bg-white/95 backdrop-blur-xl";
+
+  const footerClass = isDarkMode
+    ? "bg-transparent border-slate-800 text-white"
+    : "bg-white/70 backdrop-blur-sm border-slate-100 text-slate-800";
 
   return (
-    <div className="bg-[#0f172a] min-h-screen font-sans text-white flex flex-col text-left">
-      <PremiumBackground>
+    <div className={`${themeClass} min-h-screen font-sans flex flex-col transition-all duration-500 relative`}>
+      <PremiumBackground isLightMode={!isDarkMode}>
+        
+        {/* THEME TOGGLE - MENGGUNAKAN COMPONENT */}
+        <ThemeToggle variant="floating" />
+
         {/* NAVBAR */}
-        <nav className="bg-[#0f172a]/95 backdrop-blur-md border-b border-slate-800 px-4 md:px-8 py-4 flex justify-between items-center fixed top-0 left-0 right-0 z-50 h-[73px]">
+        <nav className={`${navClass} border-b px-4 md:px-8 py-4 flex justify-between items-center fixed top-0 left-0 right-0 z-50 h-[73px] transition-all duration-500`}>
           
-          {/* LOGO */}
-          <Link to="/" className="flex items-center gap-2 md:gap-3 group min-w-fit">
-            <div className="group-hover:scale-110 transition-transform duration-300">
-              <img src={logo} alt="Logo" className="h-8 md:h-10 w-auto object-contain" onError={handleImageError} />
-            </div>
-            <h1 className="text-lg md:text-2xl font-black tracking-tighter uppercase italic text-white leading-none">
+          <Link to="/" className="flex items-center gap-3 group">
+            <img src={logo} alt="Logo" className="h-8 md:h-10 w-auto group-hover:rotate-6 transition-transform" />
+            <h1 className={`text-lg md:text-2xl font-black tracking-tighter uppercase italic transition-colors duration-300 ${isDarkMode ? 'text-white' : 'bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent'}`}>
               Raly Ticket
             </h1>
           </Link>
 
-          {/* SEARCH DESKTOP */}
-          <div className="hidden lg:flex flex-1 justify-center max-w-md mx-8">
-            <form onSubmit={handleSearchSubmit} className="relative w-full group">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-purple-500 transition-colors" size={18} />
-              <input 
-                type="text" 
-                placeholder={t.search} 
-                value={navSearch}
-                onChange={(e) => setNavSearch(e.target.value)}
-                className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2 pl-11 pr-10 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none font-bold text-white transition-all"
-              />
-              {navSearch && (
-                <button type="button" onClick={clearSearch} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white">
-                  <X size={16} />
-                </button>
-              )}
-            </form>
-          </div>
-
-          {/* NAV LINKS & ACTIONS */}
           <div className="flex items-center gap-3 md:gap-6">
-            <div className="hidden md:flex items-center gap-6 text-[11px] font-black uppercase tracking-[0.2em]">
-              <Link to="/" className={`transition ${location.pathname === '/' ? 'text-purple-400' : 'text-white hover:text-purple-400'}`}>{t.home}</Link>
-              <Link to="/events" className={`transition ${location.pathname === '/events' ? 'text-purple-400' : 'text-white hover:text-purple-400'}`}>{t.events}</Link>
+            <div className="hidden md:flex items-center gap-8 text-[11px] font-black uppercase tracking-[0.2em]">
+              <Link to="/" className={`transition-all duration-300 ${location.pathname === '/' ? 'text-purple-600' : (isDarkMode ? 'text-white/70 hover:text-purple-400' : 'text-slate-500 hover:text-purple-600')}`}>{t.home}</Link>
+              <Link to="/events" className={`transition-all duration-300 ${location.pathname === '/events' ? 'text-purple-600' : (isDarkMode ? 'text-white/70 hover:text-purple-400' : 'text-slate-500 hover:text-purple-600')}`}>{t.events}</Link>
             </div>
-            
-            {/* LANG DROPDOWN - IMPROVED SIZE & STYLE */}
+
+            {/* Lang Dropdown */}
             <div className="relative">
               <button 
                 onClick={() => setShowLangDropdown(!showLangDropdown)}
-                className="flex items-center gap-2 bg-slate-900/40 border border-white/10 px-2.5 py-1.5 rounded-xl hover:bg-slate-800 transition-all"
+                className={`flex items-center gap-2 border px-2.5 py-1.5 rounded-xl transition-all duration-300 ${isDarkMode ? 'bg-slate-900/40 border-slate-700 hover:border-slate-500' : 'bg-white/60 border-slate-200 hover:border-purple-300 backdrop-blur-sm'}`}
               >
-                <img src={flags[lang]} alt={lang} className="w-5 h-5 rounded-full object-cover border border-slate-700 shadow-md" />
-                {showLangDropdown ? (
-                  <ChevronUp size={14} className="text-white" />
-                ) : (
-                  <ChevronDown size={14} className="text-white" />
-                )}
+                <div className={`w-5 h-5 rounded-full overflow-hidden border shadow-sm ${isDarkMode ? 'border-slate-600' : 'border-white'}`}>
+                  <img src={flags[lang]} alt={lang} className="w-full h-full object-cover scale-125" />
+                </div>
+                <ChevronDown size={14} className={isDarkMode ? 'text-white/60' : 'text-slate-500'} />
               </button>
 
               {showLangDropdown && (
-                <>
-                  <div className="fixed inset-0 z-10" onClick={() => setShowLangDropdown(false)}></div>
-                  <div className="absolute right-0 mt-3 w-48 bg-[#0f172a]/95 backdrop-blur-xl rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] py-2 border border-white/10 animate-in fade-in zoom-in-95 duration-200 z-20 overflow-hidden">
-                    <button 
-                      onClick={() => changeLanguage('id')}
-                      className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all ${lang === 'id' ? 'bg-purple-600/30' : 'hover:bg-white/5'}`}
-                    >
-                      <img src={flags.id} alt="ID" className="w-5 h-5 rounded-full object-cover border border-slate-700" />
-                      <span className={`text-[11px] font-black uppercase tracking-wider ${lang === 'id' ? 'text-purple-400' : 'text-white'}`}>Bahasa Indonesia</span>
+                <div className={`absolute right-0 mt-3 w-48 rounded-2xl shadow-2xl py-2 border animate-in fade-in zoom-in-95 duration-200 z-20 backdrop-blur-xl ${dropdownClass}`}>
+                  {['id', 'en'].map((l) => (
+                    <button key={l} onClick={() => changeLanguage(l)} className={`w-full flex items-center gap-3 px-4 py-3 transition-all duration-200 ${lang === l ? 'text-purple-600 bg-purple-50/80' : (isDarkMode ? 'text-white/80 hover:bg-white/5' : 'text-slate-600 hover:bg-purple-50/50')}`}>
+                      <div className={`w-5 h-5 rounded-full overflow-hidden border ${isDarkMode ? 'border-slate-700' : 'border-slate-200'}`}>
+                        <img src={flags[l]} alt={l} className="w-full h-full object-cover scale-125" />
+                      </div>
+                      <span className="text-[11px] font-black uppercase tracking-wider">{l === 'id' ? 'Indonesia' : 'English'}</span>
                     </button>
-                    <button 
-                      onClick={() => changeLanguage('en')}
-                      className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all ${lang === 'en' ? 'bg-purple-600/30' : 'hover:bg-white/5'}`}
-                    >
-                      <img src={flags.en} alt="EN" className="w-5 h-5 rounded-full object-cover border border-slate-700" />
-                      <span className={`text-[11px] font-black uppercase tracking-wider ${lang === 'en' ? 'text-purple-400' : 'text-white'}`}>English</span>
-                    </button>
-                  </div>
-                </>
+                  ))}
+                </div>
               )}
             </div>
 
-            {/* CART */}
-            <Link to="/cart" className="relative text-white group p-2">
-              <ShoppingCart size={22} className="cursor-pointer group-hover:text-purple-400 transition" />
+            {/* Cart */}
+            <Link to="/cart" className={`relative p-2 rounded-xl transition-all duration-300 ${isDarkMode ? 'text-white/80 hover:bg-slate-800/50' : 'text-slate-600 hover:bg-purple-50/50'}`}>
+              <ShoppingCart size={20} />
               {hasCartItems && (
-                <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
+                <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-purple-600 border border-[#0f172a]"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-purple-600"></span>
                 </span>
               )}
             </Link>
 
-            {/* AUTH SECTION */}
+            {/* Auth */}
             {isLoggedIn ? (
               <div className="relative">
-                <button onClick={() => setShowDropdown(!showDropdown)} className="flex items-center gap-2 bg-slate-800/50 p-1 md:pr-4 rounded-full hover:bg-slate-800 transition border border-slate-700 group">
-                  <div className="bg-slate-900 w-8 h-8 md:w-9 md:h-9 rounded-full overflow-hidden border border-purple-500/30">
-                    <img 
-                      src={userData?.avatar || getAvatarUrl(userData?.avatar_seed)} 
-                      alt="Avatar" 
-                      className="w-full h-full object-cover" 
-                      onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${userData?.name || 'User'}&background=6366f1&color=fff`; }}
-                    />
+                <button onClick={() => setShowDropdown(!showDropdown)} className={`flex items-center gap-3 p-1 rounded-xl border transition-all duration-300 md:pr-4 ${isDarkMode ? 'bg-slate-900/50 border-slate-700 hover:border-slate-500' : 'bg-white/60 border-slate-200 hover:border-purple-300 backdrop-blur-sm shadow-sm'}`}>
+                  <div className={`w-8 h-8 rounded-full overflow-hidden border-2 ${isDarkMode ? 'border-slate-700' : 'border-purple-400/30'}`}>
+                    <img src={userData?.avatar} alt="Avatar" className="w-full h-full object-cover" />
                   </div>
-                  <div className="hidden md:flex flex-col items-start leading-none text-left">
-                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{t.account}</span>
-                    <span className="text-[10px] font-black text-white uppercase tracking-tighter max-w-[80px] truncate">
-                      {userData?.name || 'User'}
-                    </span>
-                  </div>
+                  <span className={`hidden md:block text-[10px] font-black uppercase tracking-tight ${isDarkMode ? 'text-white/80' : 'text-slate-700'}`}>{userData?.name?.split(' ')[0]}</span>
+                  <ChevronDown size={12} className={isDarkMode ? 'text-white/50' : 'text-slate-400'} />
                 </button>
 
                 {showDropdown && (
-                  <>
-                    <div className="fixed inset-0 z-10" onClick={() => setShowDropdown(false)}></div>
-                    <div className="absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-2xl py-2 border border-slate-100 animate-in fade-in slide-in-from-top-2 duration-300 z-20 overflow-hidden text-left">
-                      <div className="px-5 py-4 border-b border-slate-50 bg-slate-50/50 mb-1">
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Authenticated As</p>
-                        <p className="text-xs font-black text-slate-900 truncate">{userData?.name || 'User'}</p>
-                      </div>
-                      <Link to="/dashboard/overview" onClick={() => setShowDropdown(false)} className="flex items-center gap-3 px-5 py-3.5 text-slate-700 hover:bg-purple-50 hover:text-purple-600 transition font-black text-[10px] uppercase tracking-widest">
-                        <User size={16} /> {t.dashboard}
-                      </Link>
-                      <button onClick={handleLogout} className="w-full flex items-center gap-3 px-5 py-3.5 text-red-500 hover:bg-red-50 transition font-black text-[10px] uppercase tracking-widest border-t border-slate-100 text-left">
-                        <LogOut size={16} /> {t.logout}
-                      </button>
-                    </div>
-                  </>
+                  <div className={`absolute right-0 mt-3 w-60 rounded-2xl shadow-2xl py-2 border z-20 backdrop-blur-xl ${dropdownClass}`}>
+                    <Link to="/dashboard/overview" onClick={() => setShowDropdown(false)} className={`flex items-center gap-3 px-5 py-3.5 font-black text-[10px] uppercase tracking-widest transition-all duration-200 ${isDarkMode ? 'text-slate-300 hover:text-purple-400 hover:bg-white/5' : 'text-slate-600 hover:text-purple-600 hover:bg-purple-50/80'}`}>
+                      <User size={16} /> {t.dashboard}
+                    </Link>
+                    <button onClick={handleLogout} className={`w-full flex items-center gap-3 px-5 py-4 transition-all duration-200 font-black text-[10px] uppercase tracking-widest text-left ${isDarkMode ? 'text-red-400 hover:bg-red-500/10 border-t border-white/10' : 'text-red-500 hover:bg-red-50/80 border-t border-slate-100'}`}>
+                      <LogOut size={16} /> {t.logout}
+                    </button>
+                  </div>
                 )}
               </div>
             ) : (
-              <Link to="/login" className="hidden md:block bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-2.5 rounded-xl text-white font-black uppercase text-[10px] tracking-widest shadow-lg shadow-purple-500/20">
+              <Link to="/login" className="hidden md:block bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-2.5 rounded-xl text-white font-black uppercase text-[10px] tracking-widest shadow-lg shadow-purple-500/25 hover:scale-105 hover:shadow-purple-500/40 transition-all duration-300">
                 {t.signin}
               </Link>
             )}
 
-            {/* MOBILE TOGGLE */}
-            <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="md:hidden p-2 text-white">
-              {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="md:hidden p-2 transition-all">
+              {isMobileMenuOpen ? <X size={26} /> : <Menu size={26} />}
             </button>
           </div>
         </nav>
 
         {/* MOBILE MENU */}
         {isMobileMenuOpen && (
-          <div className="fixed inset-0 top-[73px] bg-[#0f172a] z-[49] animate-in slide-in-from-right duration-300 md:hidden flex flex-col p-6 gap-8 text-left">
-            <form onSubmit={handleSearchSubmit} className="relative group">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-              <input 
-                type="text" 
-                placeholder={t.search} 
-                value={navSearch}
-                onChange={(e) => setNavSearch(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-12 pr-4 text-sm font-bold outline-none text-white"
-              />
-            </form>
-
-            <div className="flex flex-col gap-6 text-xl font-black uppercase tracking-[0.1em]">
-              <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className={`${location.pathname === '/' ? 'text-purple-400' : 'text-white'}`}>{t.home}</Link>
-              <Link to="/events" onClick={() => setIsMobileMenuOpen(false)} className={`${location.pathname === '/events' ? 'text-purple-400' : 'text-white'}`}>{t.events}</Link>
-              {isLoggedIn ? (
-                <Link to="/dashboard/overview" onClick={() => setIsMobileMenuOpen(false)} className="text-purple-400">{t.dashboard}</Link>
-              ) : (
-                <Link to="/login" onClick={() => setIsMobileMenuOpen(false)} className="text-purple-500 pt-4 border-t border-slate-800">{t.signin}</Link>
-              )}
-              {/* Mobile Language Switcher */}
-              <div className="flex gap-4 pt-4 border-t border-slate-800">
-                <button onClick={() => changeLanguage('id')} className={`p-1 rounded-full border-2 ${lang === 'id' ? 'border-purple-500' : 'border-transparent'}`}>
-                    <img src={flags.id} alt="ID" className="w-8 h-8 rounded-full object-cover" />
-                </button>
-                <button onClick={() => changeLanguage('en')} className={`p-1 rounded-full border-2 ${lang === 'en' ? 'border-purple-500' : 'border-transparent'}`}>
-                    <img src={flags.en} alt="EN" className="w-8 h-8 rounded-full object-cover" />
-                </button>
-              </div>
-            </div>
+          <div className={`fixed inset-0 top-[73px] z-[49] animate-in slide-in-from-right duration-300 md:hidden flex flex-col p-8 gap-8 backdrop-blur-xl ${mobileMenuClass}`}>
+             <div className="flex flex-col gap-6 text-2xl font-black uppercase tracking-tighter">
+                <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className={`transition-all ${location.pathname === '/' ? 'text-purple-600' : (isDarkMode ? 'text-white' : 'text-slate-700')}`}>{t.home}</Link>
+                <Link to="/events" onClick={() => setIsMobileMenuOpen(false)} className={`transition-all ${location.pathname === '/events' ? 'text-purple-600' : (isDarkMode ? 'text-white' : 'text-slate-700')}`}>{t.events}</Link>
+                {!isLoggedIn && <Link to="/login" className="text-purple-600">{t.signin}</Link>}
+             </div>
           </div>
         )}
 
-        <main className="flex-1 pt-[73px]">
+        <main className="flex-1 pt-[73px] min-h-[calc(100vh-73px)] overflow-visible">
           {children}
         </main>
 
         {/* FOOTER */}
-        <footer className="w-full bg-transparent border-t border-slate-800 pt-16 pb-8 mt-20 font-sans text-white text-left relative z-10">
-          <div className="max-w-7xl mx-auto px-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-12 mb-12">
-              <div className="col-span-1">
-                <div className="flex items-center gap-3 mb-4">
-                  <img src={logo} alt="Logo" className="h-8 w-auto object-contain" />
-                  <span className="font-black uppercase tracking-tighter text-white text-lg md:text-xl italic">
-                    Raly Ticket
-                  </span>
-                </div>
-                <p className="text-slate-400 text-sm leading-relaxed font-medium">
-                  {t.footer_desc}
-                </p>
+        <footer className={`w-full border-t pt-20 pb-12 mt-20 relative z-10 transition-all duration-500 ${footerClass}`}>
+          <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-12">
+            <div className="col-span-1">
+              <div className="flex items-center gap-3 mb-6">
+                <img src={logo} alt="Logo" className="h-8 w-auto" />
+                <span className={`font-black uppercase italic text-xl ${isDarkMode ? 'text-white' : 'bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent'}`}>Raly Ticket</span>
               </div>
-
-              <div>
-                <h4 className="font-black uppercase tracking-widest text-xs text-purple-400 mb-6">{t.explore}</h4>
-                <ul className="space-y-4 text-sm font-bold text-slate-300">
-                  <li onClick={() => navigate('/')} className="hover:text-purple-400 cursor-pointer transition-colors">{t.home}</li>
-                  <li onClick={() => navigate('/events')} className="hover:text-purple-400 cursor-pointer transition-colors">{t.events}</li>
-                </ul>
-              </div>
-
-              <div>
-                <h4 className="font-black uppercase tracking-widest text-xs text-purple-400 mb-6">Support</h4>
-                <ul className="space-y-4 text-sm font-bold text-slate-300">
-                  <li className="flex items-center gap-2 break-all md:break-normal">
-                    <Mail size={16} className="min-w-fit text-purple-500" /> help@ralyticket.com
-                  </li>
-                  <li className="hover:text-purple-400 cursor-pointer transition-colors">Terms of Service</li>
-                  <li className="hover:text-purple-400 cursor-pointer transition-colors">Privacy Policy</li>
-                </ul>
-              </div>
-
-              <div>
-                <h4 className="font-black uppercase tracking-widest text-xs text-purple-400 mb-6">{t.follow}</h4>
-                <div className="flex gap-4">
-                  {[Instagram, Twitter, Facebook].map((Icon, index) => (
-                    <div key={index} className="w-10 h-10 rounded-xl bg-slate-900/50 border border-slate-700 flex items-center justify-center text-slate-400 hover:border-purple-500 hover:text-purple-500 hover:-translate-y-1 cursor-pointer transition-all">
-                      <Icon size={20} />
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <p className={`text-sm font-medium leading-relaxed ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{t.footer_desc}</p>
+            </div>
+            
+            <div>
+              <h4 className="font-black uppercase tracking-widest text-[11px] text-purple-600 mb-8">{t.explore}</h4>
+              <ul className={`space-y-4 text-sm font-bold ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                <li onClick={() => navigate('/')} className="hover:text-purple-500 cursor-pointer transition-all duration-200">{t.home}</li>
+                <li onClick={() => navigate('/events')} className="hover:text-purple-500 cursor-pointer transition-all duration-200">{t.events}</li>
+              </ul>
             </div>
 
-            <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-slate-500 text-center md:text-left">
-              <p className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em]">
-                © 2026 RALY TICKET. ALL RIGHTS RESERVED.
-              </p>
+            <div>
+              <h4 className="font-black uppercase tracking-widest text-[11px] text-purple-600 mb-8">Support</h4>
+              <ul className={`space-y-4 text-sm font-bold ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                <li className="flex items-center gap-2"><Mail size={16} className="text-purple-500" /> help@ralyticket.com</li>
+                <li className="hover:text-purple-500 cursor-pointer transition-all duration-200">Privacy Policy</li>
+              </ul>
             </div>
+
+            <div>
+              <h4 className="font-black uppercase tracking-widest text-[11px] text-purple-600 mb-8">{t.follow}</h4>
+              <div className="flex gap-4">
+                {[Instagram, Twitter, Facebook].map((Icon, i) => (
+                  <div key={i} className={`w-12 h-12 rounded-2xl border flex items-center justify-center cursor-pointer transition-all duration-300 ${isDarkMode ? 'bg-slate-900/50 border-slate-700 hover:border-purple-500 hover:bg-slate-800' : 'bg-white/50 border-slate-200 hover:border-purple-400 hover:shadow-lg hover:bg-purple-50/50'}`}>
+                    <Icon size={20} className="text-purple-500" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className={`max-w-7xl mx-auto px-6 mt-16 pt-8 border-t text-center ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}>
+            <p className={`text-[9px] font-black uppercase tracking-[0.3em] ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>© 2026 RALY TICKET. ALL RIGHTS RESERVED.</p>
           </div>
         </footer>
       </PremiumBackground>
+
+      <style>{`
+        @keyframes spin-slow {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        @keyframes pulse-slow {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.1); opacity: 0.8; }
+        }
+        .animate-spin-slow {
+          animation: spin-slow 4s linear infinite;
+        }
+        .animate-pulse-slow {
+          animation: pulse-slow 2s ease-in-out infinite;
+        }
+      `}</style>
     </div>
   );
 };

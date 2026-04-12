@@ -16,8 +16,6 @@ import EditConcert from './pages/Concerts/EditConcert';
 import ManageTicket from './pages/Tickets/ManageTicket';
 import ManageMasterData from './pages/MasterData/ManageMasterData';
 import OrderHistory from './pages/Orders/OrderHistory';
-import Preferences from './pages/Admin/Preferences';
-
 // --- HELPER COMPONENTS ---
 
 // 1. Scroll ke atas setiap kali ganti halaman
@@ -113,7 +111,6 @@ function App() {
             <Route path="tickets" element={<ManageTicket />} />
             <Route path="orders" element={<OrderHistory />} />
             <Route path="master-data" element={<ManageMasterData />} />
-            <Route path="preferences" element={<Preferences />} />
             <Route path="profile" element={<Profile />} />
           </Route>
 

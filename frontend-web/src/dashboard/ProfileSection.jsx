@@ -11,6 +11,7 @@ const ProfileSection = () => {
   const userData = context?.userData;
   const fetchUserData = context?.fetchUserData;
   const lang = context?.lang || "id";
+  const isDarkMode = context?.isDarkMode !== undefined ? context?.isDarkMode : true;
 
   const [isUpdating, setIsUpdating] = useState(false);
   const [name, setName] = useState("");
@@ -144,17 +145,72 @@ const ProfileSection = () => {
     }
   };
 
+  // Light mode specific styles
+  const headerClass = !isDarkMode 
+    ? "bg-white/60 backdrop-blur-xl border-slate-200 shadow-lg" 
+    : "bg-white/5 backdrop-blur-xl border-white/10 shadow-2xl";
+  const headerTitleClass = !isDarkMode ? "text-slate-800" : "text-white";
+  const headerSubtitleClass = !isDarkMode ? "text-slate-500" : "text-slate-400";
+  
+  const panelClass = !isDarkMode 
+    ? "bg-white/60 backdrop-blur-xl border-slate-200 shadow-lg" 
+    : "bg-white/5 backdrop-blur-xl border-white/10 shadow-2xl";
+  const panelTitleClass = !isDarkMode ? "text-slate-800" : "text-white";
+  const labelClass = !isDarkMode ? "text-slate-500" : "text-slate-500";
+  const inputClass = !isDarkMode 
+    ? "bg-white/80 border-slate-200 focus:border-purple-500 focus:bg-white text-slate-800 shadow-sm" 
+    : "bg-white/5 border-white/10 focus:border-purple-500/50 focus:bg-white/10 text-white shadow-inner";
+  const readOnlyClass = !isDarkMode 
+    ? "bg-slate-100 border-slate-200 text-slate-500" 
+    : "bg-black/20 border-white/5 text-slate-400";
+  
+  const baseButtonClass = !isDarkMode 
+    ? "border-slate-200 bg-white/60 hover:bg-white/80" 
+    : "border-white/5 bg-white/5 hover:bg-white/10";
+  const baseButtonActiveClass = !isDarkMode 
+    ? "border-purple-500 bg-purple-100 shadow-[0_0_20px_rgba(147,51,234,0.2)] ring-2 ring-purple-400/50" 
+    : "border-purple-500 bg-purple-500/20 shadow-[0_0_20px_rgba(147,51,234,0.3)] ring-2 ring-purple-500/50";
+  
+  const styleButtonClass = !isDarkMode 
+    ? "bg-white/80 border-slate-200 text-slate-700 hover:bg-white" 
+    : "bg-white/5 text-slate-400 border-white/5 hover:border-white/20 hover:bg-white/10";
+  const styleButtonActiveClass = !isDarkMode 
+    ? "bg-slate-800 text-white border-slate-800 shadow-xl" 
+    : "bg-white text-slate-900 border-white shadow-xl";
+  
+  const clothesButtonClass = !isDarkMode 
+    ? "bg-white/80 border-slate-200 text-slate-700 hover:bg-white" 
+    : "bg-white/5 text-slate-400 border-white/5 hover:border-white/20 hover:bg-white/10";
+  const clothesButtonActiveClass = !isDarkMode 
+    ? "bg-purple-500 text-white border-purple-500 shadow-xl" 
+    : "bg-indigo-600 text-white border-indigo-600 shadow-xl";
+  
+  const previewCardClass = !isDarkMode 
+    ? "bg-white/70 backdrop-blur-2xl border-slate-200 shadow-lg" 
+    : "bg-white/5 backdrop-blur-2xl border-white/10 shadow-2xl";
+  const previewAvatarBgClass = !isDarkMode ? "bg-slate-100 border-white" : "bg-slate-950 border-white/5";
+  const previewNameClass = !isDarkMode ? "text-slate-800" : "text-white";
+  const previewEmailClass = !isDarkMode ? "text-slate-500" : "text-slate-500";
+  
+  const saveButtonClass = !isDarkMode 
+    ? "bg-purple-500 text-white hover:bg-white hover:text-purple-600 shadow-lg shadow-purple-200/50" 
+    : "bg-purple-600 text-white hover:bg-white hover:text-purple-900 shadow-2xl";
+  
+  const proTipClass = !isDarkMode 
+    ? "bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg" 
+    : "bg-gradient-to-br from-indigo-600 to-purple-700 shadow-2xl";
+
   return (
     <div className="max-w-[1600px] mx-auto space-y-6 animate-in fade-in zoom-in duration-500">
       {/* Header Profile - Glass Look */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white/5 backdrop-blur-xl p-6 rounded-[2.5rem] border border-white/10 shadow-2xl">
+      <div className={`flex flex-col sm:flex-row items-center justify-between gap-4 p-6 rounded-[2.5rem] border shadow-2xl ${headerClass}`}>
         <div className="flex items-center gap-4">
           <div className="p-3 bg-purple-600 rounded-2xl shadow-lg shadow-purple-600/20 text-white shrink-0">
               <User size={28} />
           </div>
           <div>
-              <h2 className="text-2xl font-black text-white uppercase italic leading-none">{t.title}</h2>
-              <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-2">{t.subtitle}</p>
+              <h2 className={`text-2xl font-black uppercase italic leading-none ${headerTitleClass}`}>{t.title}</h2>
+              <p className={`text-[10px] font-bold uppercase tracking-widest mt-2 ${headerSubtitleClass}`}>{t.subtitle}</p>
           </div>
         </div>
       </div>
@@ -163,35 +219,35 @@ const ProfileSection = () => {
         {/* Left Form Column */}
         <div className="lg:col-span-8 space-y-6 order-2 lg:order-1">
           {/* Basic Info Panel */}
-          <div className="bg-white/5 backdrop-blur-xl p-8 md:p-10 rounded-[3rem] shadow-2xl border border-white/10 relative overflow-hidden group">
+          <div className={`p-8 md:p-10 rounded-[3rem] shadow-2xl border relative overflow-hidden group ${panelClass}`}>
             <div className="absolute top-0 right-0 p-8 opacity-5 hidden sm:block text-white transition-transform group-hover:rotate-12 duration-700">
                 <Settings size={120} />
             </div>
 
             <div className="flex items-center gap-3 mb-8 relative">
               <div className="w-1.5 h-6 bg-purple-600 rounded-full shadow-[0_0_15px_rgba(147,51,234,0.5)]"></div>
-              <h4 className="text-lg md:text-xl font-black text-white uppercase italic tracking-tighter">{t.basicInfo}</h4>
+              <h4 className={`text-lg md:text-xl font-black uppercase italic tracking-tighter ${panelTitleClass}`}>{t.basicInfo}</h4>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative">
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">{t.displayName}</label>
+                <label className={`text-[10px] font-black uppercase tracking-widest ml-2 ${labelClass}`}>{t.displayName}</label>
                 <input 
                   type="text" 
                   value={name} 
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full bg-white/5 p-4 md:p-5 rounded-2xl border border-white/10 focus:border-purple-500/50 focus:bg-white/10 outline-none font-bold transition-all text-white shadow-inner"
+                  className={`w-full p-4 md:p-5 rounded-2xl border outline-none font-bold transition-all ${inputClass}`}
                 />
               </div>
 
               <div className="space-y-2 opacity-80">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">{t.emailLabel}</label>
+                <label className={`text-[10px] font-black uppercase tracking-widest ml-2 ${labelClass}`}>{t.emailLabel}</label>
                 <div className="relative">
                   <input 
                     type="text" 
                     value={String(userData?.email || "")} 
                     readOnly 
-                    className="w-full bg-black/20 p-4 md:p-5 rounded-2xl border border-white/5 font-bold cursor-not-allowed text-slate-400 italic pr-12" 
+                    className={`w-full p-4 md:p-5 rounded-2xl border font-bold cursor-not-allowed italic pr-12 ${readOnlyClass}`} 
                   />
                   <ShieldCheck className="absolute right-4 top-4 md:right-5 md:top-5 text-slate-500" size={20} />
                 </div>
@@ -200,22 +256,22 @@ const ProfileSection = () => {
           </div>
 
           {/* Avatar Customization Panel */}
-          <div className="bg-white/5 backdrop-blur-xl p-8 md:p-10 rounded-[3rem] shadow-2xl border border-white/10">
+          <div className={`p-8 md:p-10 rounded-[3rem] shadow-2xl border ${panelClass}`}>
             <div className="flex items-center gap-3 mb-8">
               <div className="w-1.5 h-6 bg-indigo-600 rounded-full shadow-[0_0_15px_rgba(79,70,229,0.5)]"></div>
-              <h4 className="text-lg md:text-xl font-black text-white uppercase italic tracking-tighter">{t.customTitle}</h4>
+              <h4 className={`text-lg md:text-xl font-black uppercase italic tracking-tighter ${panelTitleClass}`}>{t.customTitle}</h4>
             </div>
 
             <div className="space-y-10">
               {/* Base Selection */}
               <div>
-                <div className="flex items-center gap-2 mb-4 text-slate-500">
+                <div className={`flex items-center gap-2 mb-4 ${labelClass}`}>
                   <LayoutGrid size={16} /><span className="text-[10px] md:text-xs font-black uppercase tracking-widest">{t.selectBase}</span>
                 </div>
                 <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
                   {avatarSeeds.map(s => (
                     <button key={s} type="button" onClick={() => setAvatarData({...avatarData, seed: s})} 
-                      className={`aspect-square rounded-2xl p-1 border transition-all hover:scale-110 ${avatarData.seed === s ? 'border-purple-500 bg-purple-500/20 shadow-[0_0_20px_rgba(147,51,234,0.3)] ring-2 ring-purple-500/50' : 'border-white/5 bg-white/5 opacity-60 hover:opacity-100'}`}>
+                      className={`aspect-square rounded-2xl p-1 border transition-all hover:scale-110 ${avatarData.seed === s ? baseButtonActiveClass : baseButtonClass}`}>
                       <img src={`https://api.dicebear.com/9.x/toon-head/svg?seed=${s}`} alt={s} className="w-full h-full" />
                     </button>
                   ))}
@@ -226,12 +282,12 @@ const ProfileSection = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                 <div className="space-y-6">
                     <div className="space-y-4">
-                        <div className="flex items-center gap-2 text-slate-500">
+                        <div className={`flex items-center gap-2 ${labelClass}`}>
                             <Scissors size={16} /><span className="text-[10px] md:text-xs font-black uppercase tracking-widest">{t.hairStyle}</span>
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                             {hairStyles.map(h => (
-                                <button key={h} onClick={() => setAvatarData({...avatarData, hair: h})} className={`py-3 px-3 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-tighter transition-all border ${avatarData.hair === h ? 'bg-white text-slate-900 border-white shadow-xl scale-[1.02]' : 'bg-white/5 text-slate-400 border-white/5 hover:border-white/20 hover:bg-white/10'}`}>
+                                <button key={h} onClick={() => setAvatarData({...avatarData, hair: h})} className={`py-3 px-3 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-tighter transition-all border ${avatarData.hair === h ? styleButtonActiveClass : styleButtonClass}`}>
                                     {h}
                                 </button>
                             ))}
@@ -239,12 +295,12 @@ const ProfileSection = () => {
                     </div>
 
                     <div className="space-y-4">
-                        <div className="flex items-center gap-2 text-slate-500">
+                        <div className={`flex items-center gap-2 ${labelClass}`}>
                             <Smile size={16} /><span className="text-[10px] md:text-xs font-black uppercase tracking-widest">{t.expression}</span>
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                             {mouthStyles.map(m => (
-                                <button key={m} onClick={() => setAvatarData({...avatarData, mouth: m})} className={`py-3 px-3 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-tighter transition-all border ${avatarData.mouth === m ? 'bg-white text-slate-900 border-white shadow-xl scale-[1.02]' : 'bg-white/5 text-slate-400 border-white/5 hover:border-white/20 hover:bg-white/10'}`}>
+                                <button key={m} onClick={() => setAvatarData({...avatarData, mouth: m})} className={`py-3 px-3 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-tighter transition-all border ${avatarData.mouth === m ? styleButtonActiveClass : styleButtonClass}`}>
                                     {m}
                                 </button>
                             ))}
@@ -252,12 +308,12 @@ const ProfileSection = () => {
                     </div>
 
                     <div className="space-y-4">
-                        <div className="flex items-center gap-2 text-slate-500">
+                        <div className={`flex items-center gap-2 ${labelClass}`}>
                             <Sparkles size={16} /><span className="text-[10px] md:text-xs font-black uppercase tracking-widest">{t.clothesType}</span>
                         </div>
                         <div className="grid grid-cols-3 gap-2">
                             {clothesStyles.map(c => (
-                                <button key={c} onClick={() => setAvatarData({...avatarData, clothes: c})} className={`py-3 px-1 rounded-xl text-[8px] md:text-[9px] font-black uppercase tracking-tighter transition-all border ${avatarData.clothes === c ? 'bg-indigo-600 text-white border-indigo-600 shadow-xl scale-[1.02]' : 'bg-white/5 text-slate-400 border-white/5 hover:border-white/20 hover:bg-white/10'}`}>
+                                <button key={c} onClick={() => setAvatarData({...avatarData, clothes: c})} className={`py-3 px-1 rounded-xl text-[8px] md:text-[9px] font-black uppercase tracking-tighter transition-all border ${avatarData.clothes === c ? clothesButtonActiveClass : clothesButtonClass}`}>
                                     {c}
                                 </button>
                             ))}
@@ -267,7 +323,7 @@ const ProfileSection = () => {
 
                 <div className="space-y-8">
                     <div>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-4 italic">{t.hairColor}</span>
+                        <span className={`text-[10px] font-black uppercase tracking-widest block mb-4 italic ${labelClass}`}>{t.hairColor}</span>
                         <div className="flex flex-wrap gap-3">
                             {hairColors.map(c => (
                                 <button key={c} onClick={() => setAvatarData({...avatarData, hairColor: c})} 
@@ -277,7 +333,7 @@ const ProfileSection = () => {
                     </div>
 
                     <div>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-4 italic">{t.clothesColor}</span>
+                        <span className={`text-[10px] font-black uppercase tracking-widest block mb-4 italic ${labelClass}`}>{t.clothesColor}</span>
                         <div className="flex flex-wrap gap-3">
                             {clothesColors.map(c => (
                                 <button key={c} onClick={() => setAvatarData({...avatarData, clothesColor: c})} 
@@ -287,7 +343,7 @@ const ProfileSection = () => {
                     </div>
 
                     <div>
-                        <div className="flex items-center gap-2 mb-4 text-slate-500">
+                        <div className={`flex items-center gap-2 mb-4 ${labelClass}`}>
                             <Palette size={16} /><span className="text-[10px] md:text-xs font-black uppercase tracking-widest">{t.bgColor}</span>
                         </div>
                         <div className="flex flex-wrap gap-3">
@@ -305,12 +361,12 @@ const ProfileSection = () => {
 
         {/* Right Preview Column */}
         <div className="lg:col-span-4 lg:sticky lg:top-32 space-y-6 order-1 lg:order-2">
-          <div className="bg-white/5 backdrop-blur-2xl p-8 rounded-[3rem] shadow-2xl border border-white/10 flex flex-col items-center text-center relative overflow-hidden group">
+          <div className={`p-8 rounded-[3rem] shadow-2xl border flex flex-col items-center text-center relative overflow-hidden group ${previewCardClass}`}>
             <div className="absolute -top-10 -left-10 w-32 h-32 bg-purple-600/10 rounded-full blur-3xl group-hover:bg-purple-600/20 transition-colors"></div>
             <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-indigo-600/10 rounded-full blur-3xl group-hover:bg-indigo-600/20 transition-colors"></div>
 
             <div className="relative mb-6">
-              <div className="w-48 h-48 bg-slate-950 rounded-[3rem] flex items-center justify-center border-8 border-white/5 shadow-2xl overflow-hidden">
+              <div className={`w-48 h-48 rounded-[3rem] flex items-center justify-center border-8 shadow-2xl overflow-hidden ${previewAvatarBgClass}`}>
                 <img 
                   src={getAvatarUrl(avatarData)} 
                   alt="Avatar Preview" 
@@ -326,15 +382,15 @@ const ProfileSection = () => {
               {String(userData?.role || 'Customer')} Member
             </span>
             
-            <h3 className="text-3xl font-black text-white uppercase italic tracking-tighter mt-6 truncate w-full px-2">
+            <h3 className={`text-3xl font-black uppercase italic tracking-tighter mt-6 truncate w-full px-2 ${previewNameClass}`}>
               {String(name || "User")}
             </h3>
-            <p className="text-slate-500 font-bold text-xs uppercase tracking-widest mt-1 mb-8 truncate w-full px-4">{String(userData?.email || "")}</p>
+            <p className={`font-bold text-xs uppercase tracking-widest mt-1 mb-8 truncate w-full px-4 ${previewEmailClass}`}>{String(userData?.email || "")}</p>
 
             <button 
                 onClick={handleSave}
                 disabled={isUpdating}
-                className="w-full bg-purple-600 text-white py-6 rounded-[2rem] font-black uppercase text-xs tracking-[0.2em] hover:bg-white hover:text-purple-900 active:scale-95 transition-all flex items-center justify-center gap-3 shadow-2xl disabled:opacity-50"
+                className={`w-full py-6 rounded-[2rem] font-black uppercase text-xs tracking-[0.2em] active:scale-95 transition-all flex items-center justify-center gap-3 shadow-2xl disabled:opacity-50 ${saveButtonClass}`}
             >
                 {isUpdating ? <Loader2 className="animate-spin" size={20} /> : (
                     <>
@@ -345,7 +401,7 @@ const ProfileSection = () => {
             </button>
           </div>
 
-          <div className="bg-gradient-to-br from-indigo-600 to-purple-700 p-8 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden group">
+          <div className={`p-8 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden group ${proTipClass}`}>
               <Camera className="absolute -right-4 -bottom-4 text-white/10 group-hover:scale-150 transition-transform duration-700" size={100} />
               <h5 className="font-black uppercase italic tracking-tighter text-lg mb-2 relative">Pro Tip!</h5>
               <p className="text-xs font-bold text-white/80 leading-relaxed relative">
