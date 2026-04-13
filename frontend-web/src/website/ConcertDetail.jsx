@@ -302,18 +302,20 @@ const ConcertDetail = () => {
               <span className="w-1.5 h-6 bg-purple-500 rounded-full"></span> 
               {currentLang === 'id' ? 'Narasi Event' : 'Event Narratives'}
             </h4>
+            
             <div className="w-full space-y-6">
               {Array.isArray(contentArray) && contentArray.length > 0 ? (
                 contentArray.map((htmlString, idx) => {
                   const cleanedContent = htmlString
-                    .replace(/ /g, ' ') 
+                    .replace(/&nbsp;/g, ' ') 
                     .replace(/background-color:[^;]+;/g, '') 
                     .replace(/color:[^;]+;/g, 'color: inherit;'); 
 
                   return (
                     <div key={idx} className={`p-6 md:p-8 rounded-[2rem] border backdrop-blur-sm ${!isDarkMode ? 'bg-white/40 border-slate-200' : 'bg-white/5 border-white/10'}`}>
                       <div 
-                        className={`quill-content font-medium text-base leading-relaxed ${!isDarkMode ? 'text-slate-700' : 'text-slate-300'}`} 
+                        /* Tambahkan break-words untuk keamanan extra di Tailwind */
+                        className={`quill-content break-words font-medium text-base leading-relaxed ${!isDarkMode ? 'text-slate-700' : 'text-slate-300'}`} 
                         dangerouslySetInnerHTML={{ __html: cleanedContent }} 
                       />
                     </div>
@@ -327,7 +329,14 @@ const ConcertDetail = () => {
             </div>
 
             <style>{`
-                .quill-content { word-wrap: break-word; overflow-wrap: break-word; max-width: 100%; }
+                .quill-content { 
+                    /* SOLUSI UTAMA: Gunakan normal agar kata tidak terpotong di tengah */
+                    word-break: normal; 
+                    overflow-wrap: break-word; 
+                    word-wrap: break-word;
+                    text-align: justify; /* Opsional: agar lebih rapi seperti di koran */
+                    hyphens: none; /* Mencegah pemotongan kata otomatis dengan tanda hubung */
+                }
                 .quill-content span { background-color: transparent !important; color: inherit !important; }
                 .quill-content p { margin-bottom: 1.25rem; line-height: 1.8; }
                 .quill-content strong { font-weight: 800; color: ${!isDarkMode ? '#1e293b' : '#f8fafc'}; }
