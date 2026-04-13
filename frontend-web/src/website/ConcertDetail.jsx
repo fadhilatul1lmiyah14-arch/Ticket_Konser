@@ -127,6 +127,7 @@ const ConcertDetail = () => {
       ticket_name: selectedTicket.name,
       title: getLangText(concert.title),
       price: selectedTicket.price,
+       remaining_quota: selectedTicket.remaining_quota, 
       image: concert.images?.[0] || "https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?q=80&w=1000",
       location: concert.location,
       date: concert.event_date
@@ -446,13 +447,26 @@ const ConcertDetail = () => {
                   </div>
                   
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left">
-                    <h1 className={`text-4xl md:text-5xl font-black italic tracking-tighter uppercase leading-tight ${textMainClass}`}>
-                        {getLangText(concert.title)}
-                    </h1>
-                    <button onClick={handleShare} className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all flex items-center gap-2 ${!isDarkMode ? 'bg-white/60 text-slate-700 border-slate-200 hover:bg-purple-500 hover:text-white' : 'bg-white/5 text-white border-white/10 hover:bg-purple-600'}`}>
-                        <Share2 size={14}/> {currentLang === 'id' ? 'Bagikan' : 'Share'}
-                    </button>
-                  </div>
+  <div className="flex flex-col gap-2"> {/* Wrapper baru untuk Judul + Badge agar tetap rapi */}
+    {/* BADGE BERAKHIR: Muncul hanya jika is_expired true */}
+    {concert.is_expired && (
+      <div className="w-fit bg-red-600 text-white px-3 py-1 rounded-lg font-black text-[9px] uppercase tracking-[0.2em] shadow-lg shadow-red-500/20 italic animate-pulse">
+        {currentLang === 'id' ? '• Event Berakhir' : '• Event Ended'}
+      </div>
+    )}
+    
+    <h1 className={`text-4xl md:text-5xl font-black italic tracking-tighter uppercase leading-tight ${textMainClass}`}>
+      {getLangText(concert.title)}
+    </h1>
+  </div>
+
+  <button 
+    onClick={handleShare} 
+    className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all flex items-center gap-2 shrink-0 ${!isDarkMode ? 'bg-white/60 text-slate-700 border-slate-200 hover:bg-purple-500 hover:text-white' : 'bg-white/5 text-white border-white/10 hover:bg-purple-600'}`}
+  >
+    <Share2 size={14}/> {currentLang === 'id' ? 'Bagikan' : 'Share'}
+  </button>
+</div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10 text-left">
@@ -548,17 +562,28 @@ const ConcertDetail = () => {
                     </div>
 
                     <button 
-                      type="button"
-                      onClick={handleBooking} 
-                      disabled={!selectedTicket || selectedTicket.remaining_quota <= 0}
-                      className={`w-full py-5 rounded-2xl font-black text-base uppercase tracking-widest transition-all flex items-center justify-center gap-3 active:scale-95 group ${
-                        selectedTicket?.remaining_quota > 0 ? buttonClass : buttonDisabledClass
-                      }`}
-                    >
-                      {selectedTicket?.remaining_quota > 0 ? (
-                        <> {currentLang === 'id' ? 'LANJUT KE KERANJANG' : 'PROCEED TO CART'} <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" /></>
-                      ) : (currentLang === 'id' ? 'TIKET HABIS' : 'SOLD OUT')}
-                    </button>
+  type="button"
+  onClick={handleBooking} 
+  // Tombol mati jika: tiket belum dipilih, kuota habis, ATAU event sudah berakhir
+  disabled={!selectedTicket || selectedTicket.remaining_quota <= 0 || concert.is_expired}
+  className={`w-full py-5 rounded-2xl font-black text-base uppercase tracking-widest transition-all flex items-center justify-center gap-3 active:scale-95 group ${
+    (selectedTicket?.remaining_quota > 0 && !concert.is_expired) ? buttonClass : buttonDisabledClass
+  }`}
+>
+  {concert.is_expired ? (
+    // Kondisi 1: Jika Event Berakhir
+    currentLang === 'id' ? 'PENJUALAN DITUTUP' : 'SALES CLOSED'
+  ) : selectedTicket?.remaining_quota > 0 ? (
+    // Kondisi 2: Jika Masih Tersedia
+    <>
+      {currentLang === 'id' ? 'LANJUT KE KERANJANG' : 'PROCEED TO CART'} 
+      <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+    </>
+  ) : (
+    // Kondisi 3: Jika Habis (Sold Out)
+    currentLang === 'id' ? 'TIKET HABIS' : 'SOLD OUT'
+  )}
+</button>
                     
                     <p className={`mt-5 text-[8px] font-bold uppercase tracking-widest text-center italic ${textMutedClass}`}>
                         {currentLang === 'id' ? 'Harga sudah termasuk pajak & biaya layanan' : 'Price includes service fee & tax'}

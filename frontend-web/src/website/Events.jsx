@@ -377,7 +377,7 @@ const FilterSelect = ({ icon, label, options, optionKey, value, onChange, allTex
 };
 
 const EventCard = ({ event, getTranslation, lang, navigate, isDarkMode }) => {
-  const { id, title, location, category, event_date, start_time, images, starting_price, remaining_quota } = event;
+  const { id, title, location, category, event_date, start_time, images, starting_price, remaining_quota , is_expired } = event;
   const formatIDR = (amount) => amount ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(amount).replace('Rp', 'RP.') : "IDR 0";
   const dateObj = event_date ? new Date(event_date) : null;
   const day = dateObj ? dateObj.getDate().toString().padStart(2, '0') : "??";
@@ -425,6 +425,9 @@ const EventCard = ({ event, getTranslation, lang, navigate, isDarkMode }) => {
   
   const categoryTextClass = !isDarkMode ? "text-purple-300" : "text-purple-400";
   const mapPinClass = !isDarkMode ? "text-purple-400" : "text-purple-500";
+  const expiredBadgeClass = is_expired 
+  ? "bg-red-600/80 border-red-400/50 text-white" 
+  : "bg-green-600/60 border-green-400/30 text-white";
 
   return (
     <div 
@@ -465,15 +468,31 @@ const EventCard = ({ event, getTranslation, lang, navigate, isDarkMode }) => {
           </div>
           <div className={`flex items-center justify-between mt-4 pt-4 border-t ${dividerClass}`}>
             <div className="flex items-center gap-3">
-              <div className={`flex flex-col items-center justify-center w-[45px] h-[45px] rounded-2xl shadow-xl transform transition-all duration-500 group-hover:rotate-[10deg] group-hover:bg-purple-500 group-hover:text-white ${dateBoxClass}`}>
-                  <span className="text-base font-black leading-none">{day}</span>
-                  <span className="text-[8px] font-black uppercase leading-none mt-0.5">{month}</span>
-              </div>
-              <div className="flex flex-col">
+                {/* Kotak Tanggal */}
+                <div className="relative group/date">
+                  <div className={`flex flex-col items-center justify-center w-[50px] h-[50px] rounded-2xl shadow-xl transform transition-all duration-500 group-hover:rotate-[10deg] ${is_expired ? 'bg-slate-700 text-slate-400' : 'bg-gradient-to-br from-purple-500 to-indigo-500 text-white'} ${dateBoxClass}`}>
+                    <span className="text-base font-black leading-none">{day}</span>
+                    <span className="text-[8px] font-black uppercase leading-none mt-0.5">{month}</span>
+                  </div>
+                  
+                  {/* BADGE STATUS MINI DI ATAS KOTAK TANGGAL */}
+                  <div className={`absolute -top-2 -right-2 px-2 py-0.5 rounded-md text-[7px] font-black uppercase shadow-lg border z-30 ${
+                    is_expired ? 'bg-red-600 border-red-400 text-white' : 'bg-green-500 border-green-300 text-white'
+                  }`}>
+                    {is_expired ? (lang === 'id' ? 'BERAKHIR' : 'ENDED') : (lang === 'id' ? 'LIVE' : 'LIVE')}
+                  </div>
+                </div>
+              
+                <div className="flex flex-col">
                   <span className={`${yearClass} text-[10px] font-black uppercase tracking-widest`}>{year}</span>
-                  <div className="flex items-center gap-1.5"><Clock size={10} className="text-purple-400" /><span className={`text-[9px] font-bold uppercase tracking-widest ${timeClass}`}>{formattedTime}</span></div>
+                  <div className="flex items-center gap-1.5">
+                    <Clock size={10} className={is_expired ? 'text-slate-500' : 'text-purple-400'} />
+                    <span className={`text-[9px] font-bold uppercase tracking-widest ${is_expired ? 'text-slate-500 line-through' : 'text-slate-300'}`}>
+                      {formattedTime}
+                    </span>
+                  </div>
+                </div>
               </div>
-            </div>
             <div className={`backdrop-blur-sm p-2 rounded-full border group-hover:bg-gradient-to-br group-hover:from-purple-600 group-hover:to-pink-600 group-hover:border-transparent group-hover:scale-125 transition-all duration-500 shadow-lg ${arrowClass}`}>
               <ChevronRight size={16} className="text-white group-hover:translate-x-0.5 transition-transform" />
             </div>

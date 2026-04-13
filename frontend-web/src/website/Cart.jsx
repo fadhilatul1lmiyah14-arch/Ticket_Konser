@@ -75,14 +75,40 @@ const Cart = () => {
     return null;
   });
 
+  // Ambil quota maksimum dari eventData (harusnya sudah ada dari concert detail)
+  const maxQuota = eventData?.remaining_quota || 0;
+  
   const [ticketQuantity, setTicketQuantity] = useState(() => {
     const savedQty = localStorage.getItem('pending_qty');
-    return savedQty ? parseInt(savedQty) : 1;
+    const initialQty = savedQty ? parseInt(savedQty) : 1;
+    // Batasi quantity awal tidak melebihi maxQuota
+    if (maxQuota > 0 && initialQty > maxQuota) {
+      return maxQuota;
+    }
+    return initialQty;
   });
 
   const [isDeleted, setIsDeleted] = useState(false);
   const [isBooking, setIsBooking] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [quantityError, setQuantityError] = useState('');
+
+  // Validasi quantity tidak melebihi quota
+  const validateQuantity = (newQuantity) => {
+    if (maxQuota > 0 && newQuantity > maxQuota) {
+      setQuantityError(`${currentLang === 'id' ? 'Maksimal' : 'Maximum'} ${maxQuota} ${currentLang === 'id' ? 'tiket' : 'tickets'} ${currentLang === 'id' ? 'tersedia' : 'available'}`);
+      return false;
+    }
+    setQuantityError('');
+    return true;
+  };
+
+  const handleQuantityChange = (newQuantity) => {
+    if (newQuantity < 1) return;
+    if (validateQuantity(newQuantity)) {
+      setTicketQuantity(newQuantity);
+    }
+  };
 
   useEffect(() => {
     localStorage.setItem('pending_qty', ticketQuantity.toString());
@@ -136,6 +162,12 @@ const Cart = () => {
   // --- FIX UNTUK ERROR 422 ---
   const handleConfirmOrder = async () => {
     if (!eventData) return;
+    
+    // Validasi terakhir sebelum submit
+    if (maxQuota > 0 && ticketQuantity > maxQuota) {
+      setQuantityError(`${currentLang === 'id' ? 'Maksimal' : 'Maximum'} ${maxQuota} ${currentLang === 'id' ? 'tiket' : 'tickets'} ${currentLang === 'id' ? 'tersedia' : 'available'}`);
+      return;
+    }
     
     setIsBooking(true);
     setErrorMessage('');
@@ -320,6 +352,13 @@ const Cart = () => {
                             {displayLocation} — {eventData.address_details}
                           </p>
                         </div>
+                        
+                        {/* Informasi Sisa Tiket - TAMPILKAN HANYA JIKA ADA QUOTA */}
+                        {maxQuota > 0 && (
+                          <div className="mt-2 text-[9px] font-black text-purple-500 uppercase tracking-wider">
+                            {currentLang === 'id' ? 'Sisa tiket' : 'Remaining tickets'}: {maxQuota}
+                          </div>
+                        )}
                       </div>
 
                       <div className="flex flex-wrap justify-between items-end mt-10 gap-4">
@@ -332,14 +371,30 @@ const Cart = () => {
                            </p>
                         </div>
                         
-                        <div className={`flex items-center gap-5 backdrop-blur-md p-2 rounded-2xl border shadow-inner ${quantityControlClass}`}>
-                          <button onClick={() => ticketQuantity > 1 && setTicketQuantity(ticketQuantity - 1)} className={`w-12 h-12 rounded-xl flex items-center justify-center border active:scale-90 ${quantityButtonClass}`}>
-                            <Minus size={16} />
-                          </button>
-                          <span className={`font-black italic text-xl w-6 text-center ${textMainClass}`}>{ticketQuantity}</span>
-                          <button onClick={() => setTicketQuantity(ticketQuantity + 1)} className={`w-12 h-12 rounded-xl flex items-center justify-center active:scale-90 ${quantityAddClass}`}>
-                            <Plus size={16} />
-                          </button>
+                        <div className="flex flex-col items-end gap-2">
+                          <div className={`flex items-center gap-5 backdrop-blur-md p-2 rounded-2xl border shadow-inner ${quantityControlClass}`}>
+                            <button 
+                              onClick={() => handleQuantityChange(ticketQuantity - 1)} 
+                              disabled={ticketQuantity <= 1}
+                              className={`w-12 h-12 rounded-xl flex items-center justify-center border active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed ${quantityButtonClass}`}
+                            >
+                              <Minus size={16} />
+                            </button>
+                            <span className={`font-black italic text-xl w-6 text-center ${textMainClass}`}>{ticketQuantity}</span>
+                            <button 
+                              onClick={() => handleQuantityChange(ticketQuantity + 1)} 
+                              disabled={ticketQuantity >= maxQuota}
+                              className={`w-12 h-12 rounded-xl flex items-center justify-center active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed ${quantityAddClass}`}
+                            >
+                              <Plus size={16} />
+                            </button>
+                          </div>
+                          {/* Pesan error jika quantity melebihi batas */}
+                          {quantityError && (
+                            <p className="text-[9px] font-black text-red-500 uppercase tracking-wider animate-pulse">
+                              {quantityError}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </div>
