@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adminService } from '../api/adminService'; 
 import { useConfig } from '../context/ConfigContext';
@@ -18,7 +18,9 @@ import {
   Zap,
   Activity,
   Star,
-  Crown
+  Crown,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 const Dashboard = () => {
@@ -33,6 +35,13 @@ const Dashboard = () => {
     totalEvents: 0 
   });
   const [loading, setLoading] = useState(true);
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+  
+  // Ref untuk container utama (scroll to top)
+  const tableContainerRef = useRef(null);
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -58,6 +67,33 @@ const Dashboard = () => {
   useEffect(() => {
     fetchDashboardData();
   }, [period]);
+
+  // Reset page when period changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [period]);
+
+  // Scroll to top function
+  const scrollToTop = () => {
+    if (tableContainerRef.current) {
+      tableContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  // Handle page change
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    setTimeout(() => {
+      scrollToTop();
+    }, 100);
+  };
+
+  // Pagination Logic
+  const totalPages = Math.ceil(eventsPerformance.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const currentEvents = eventsPerformance.slice(startIndex, startIndex + itemsPerPage);
 
   const renderEventName = (nameData) => {
     if (typeof nameData === 'string') {
@@ -237,8 +273,8 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Table Section - Premium */}
-      <div className="bg-white rounded-[32px] overflow-hidden border border-purple-100 shadow-xl shadow-purple-50/50 relative animate-fade-in-up delay-400">
+      {/* Table Section - Premium with Pagination */}
+      <div ref={tableContainerRef} className="bg-white rounded-[32px] overflow-hidden border border-purple-100 shadow-xl shadow-purple-50/50 relative animate-fade-in-up delay-400">
         {loading && (
           <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-20 flex items-center justify-center">
             <div className="bg-white p-5 rounded-2xl shadow-2xl flex items-center gap-3 animate-scale-in">
@@ -275,7 +311,7 @@ const Dashboard = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-purple-50">
-              {eventsPerformance.length > 0 ? eventsPerformance.map((item, idx) => (
+              {currentEvents.length > 0 ? currentEvents.map((item, idx) => (
                 <tr key={item.event_id || idx} className="hover:bg-purple-50/30 transition-all duration-300 group animate-slide-in-up" style={{ animationDelay: `${idx * 0.05}s` }}>
                   <td className="px-6 md:px-8 py-5 md:py-6">
                     <div className="flex flex-col">
@@ -323,8 +359,73 @@ const Dashboard = () => {
           </table>
         </div>
 
-        {/* Table Footer */}
-        {eventsPerformance.length > 0 && (
+        {/* PAGINATION CONTROLS */}
+        {totalPages > 1 && (
+          <div className="p-4 md:p-6 border-t border-purple-100 bg-gradient-to-r from-purple-50/20 to-pink-50/20 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+              <Eye size={10} className="text-purple-400" />
+              Showing {eventsPerformance.length === 0 ? 0 : startIndex + 1} to {Math.min(startIndex + itemsPerPage, eventsPerformance.length)} of {eventsPerformance.length} events
+            </p>
+            
+            <div className="flex items-center gap-2 md:gap-3">
+              <button 
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className={`p-2.5 md:p-3 rounded-xl border transition-all duration-300 ${
+                  currentPage === 1 
+                    ? 'text-slate-300 border-slate-200 cursor-not-allowed' 
+                    : 'text-purple-500 border-purple-200 hover:bg-gradient-to-r hover:from-purple-600 hover:to-pink-600 hover:text-white hover:border-transparent active:scale-90'
+                }`}
+              >
+                <ChevronLeft size={18} />
+              </button>
+
+              <div className="flex gap-1.5 md:gap-2">
+                {[...Array(Math.min(totalPages, 5))].map((_, idx) => {
+                  let pageNumber;
+                  if (totalPages <= 5) {
+                    pageNumber = idx + 1;
+                  } else if (currentPage <= 3) {
+                    pageNumber = idx + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNumber = totalPages - 4 + idx;
+                  } else {
+                    pageNumber = currentPage - 2 + idx;
+                  }
+                  
+                  return (
+                    <button
+                      key={pageNumber}
+                      onClick={() => handlePageChange(pageNumber)}
+                      className={`w-8 h-8 md:w-10 md:h-10 rounded-xl text-[9px] md:text-[11px] font-black transition-all duration-300 ${
+                        currentPage === pageNumber 
+                          ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md scale-110' 
+                          : 'bg-white text-slate-500 border border-purple-200 hover:bg-purple-50 hover:text-purple-600'
+                      }`}
+                    >
+                      {pageNumber}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button 
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className={`p-2.5 md:p-3 rounded-xl border transition-all duration-300 ${
+                  currentPage === totalPages 
+                    ? 'text-slate-300 border-slate-200 cursor-not-allowed' 
+                    : 'text-purple-500 border-purple-200 hover:bg-gradient-to-r hover:from-purple-600 hover:to-pink-600 hover:text-white hover:border-transparent active:scale-90'
+                }`}
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Table Footer (tanpa pagination jika hanya 1 halaman) */}
+        {eventsPerformance.length > 0 && totalPages <= 1 && (
           <div className="p-4 md:p-6 border-t border-purple-100 bg-gradient-to-r from-purple-50/20 to-pink-50/20 flex justify-between items-center">
             <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
               <Eye size={10} className="text-purple-400" />
